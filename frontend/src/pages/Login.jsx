@@ -40,24 +40,32 @@ export default function Login() {
         case 'Sales Manager':
         case 'Sales Executive':
         case 'CRM Executive':
-            navigate("/leads"); // Sales Dashboard
+            navigate("/sales"); // Dedicated Sales Dashboard
             break;
             
         case 'Event Operations Manager':
         case 'Banquet Coordinator':
         case 'Banquet Manager':
-            navigate("/tasks"); // Ops Dashboard
+            navigate("/operations"); // Dedicated Ops Dashboard
             break;
             
         case 'F&B Manager':
         case 'Kitchen Head':
-            navigate("/menus"); // F&B Dashboard
+            navigate("/fnb-dashboard"); // Dedicated F&B Dashboard
             break;
             
         case 'Accounts Manager':
-            navigate("/billing"); // Finance Dashboard
+            navigate("/accounts"); // Dedicated Finance Dashboard
+            break;
+
+        case 'Inventory Manager':
+            navigate("/inventory");
             break;
             
+        case 'HR Manager':
+            navigate("/users");
+            break;
+
         default:
             navigate("/reports"); // Fallback
     }

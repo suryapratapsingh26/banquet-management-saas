@@ -33,13 +33,13 @@ import Tasks from "./pages/Tasks";
 import Billing from "./pages/Billing";
 import Audits from "./pages/Audits";
 import ProtectedRoute from "./components/ProtectedRoute";
-import SalesDashboard from "./components/SalesDashboard";
-import OperationsDashboard from "./components/OperationsDashboard";
-import FNBDashboard from "./components/FNBDashboard";
-import AccountsDashboard from "./components/AccountsDashboard";
-import FrontDeskDashboard from "./components/FrontDeskDashboard";
-import VendorDashboard from "./components/VendorDashboard";
-import EventCoordinationDashboard from "./components/EventCoordinationDashboard";
+import SalesDashboard from "./pages/SalesDashboard";
+import OperationsDashboard from "./pages/OperationsDashboard";
+import FNBDashboard from "./pages/FNBDashboard";
+import AccountsDashboard from "./pages/AccountsDashboard";
+import VendorDashboard from "./pages/VendorDashboard";
+// import FrontDeskDashboard from "./pages/FrontDeskDashboard"; // Not created yet
+// import EventCoordinationDashboard from "./pages/EventCoordinationDashboard"; // Not created yet
 
 // Smart Route Component
 const DashboardRoute = () => {
@@ -93,7 +93,7 @@ export default function App() {
           <Route path="/operations" element={<ProtectedRoute><OperationsDashboard /></ProtectedRoute>} />
           <Route path="/fnb-dashboard" element={<ProtectedRoute><FNBDashboard /></ProtectedRoute>} />
           <Route path="/accounts" element={<ProtectedRoute><AccountsDashboard /></ProtectedRoute>} />
-          <Route path="/frontdesk" element={<ProtectedRoute><FrontDeskDashboard /></ProtectedRoute>} />
+          {/* <Route path="/frontdesk" element={<ProtectedRoute><FrontDeskDashboard /></ProtectedRoute>} /> */}
           <Route path="/vendor" element={<ProtectedRoute><VendorDashboard /></ProtectedRoute>} />
         </Routes>
       </AuthProvider>

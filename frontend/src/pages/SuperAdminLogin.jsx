@@ -22,6 +22,7 @@ export default function SuperAdminLogin() {
       role: "super_admin",
     };
     login(userData);
+    navigate("/super-admin-dashboard");
   };
 
   return (
@@ -51,12 +52,12 @@ export default function SuperAdminLogin() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <button type="submit" className="w-full bg-slate-800 text-white py-2 rounded hover:bg-slate-900 font-semibold">
+          <button type="submit" className="w-full bg-slate-800 text-white py-2 rounded hover:bg-slate-900 font-semibold cursor-pointer">
             Access Console
           </button>
         </form>
         <div className="mt-4 text-center">
-             <button onClick={() => navigate("/login")} className="text-sm text-slate-600 hover:underline">Back to Property Login</button>
+             <button onClick={() => navigate("/login")} className="text-sm text-slate-600 hover:underline cursor-pointer">Back to Property Login</button>
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../components/AuthContext";
 
 export default function Login() {
@@ -10,51 +10,79 @@ export default function Login() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    // Mocking a successful login. In a real app, you'd call an API.
-    // For this demo, any email/password will work.
-    const userData = {
-      name: "Admin User",
-      role: "admin", // 'admin' can see everything
-    };
-    login(userData);
+    
+    // 1. Fetch Users from LocalStorage
+    const users = JSON.parse(localStorage.getItem("users")) || [];
+    
+    // 2. Find User (Mock Auth)
+    const user = users.find(u => u.email === email);
+
+    if (!user) {
+        alert("Invalid credentials. Please check email or ask Admin to create your account.");
+        return;
+    }
+
+    // 3. Login
+    login(user);
+
+    // 4. Role-Based Redirect Logic
+    switch(user.role) {
+        case 'Super Admin':
+            navigate("/super-admin-dashboard");
+            break;
+            
+        case 'Owner':
+        case 'admin':
+        case 'Property Admin':
+            navigate("/reports"); // Main Admin Dashboard
+            break;
+            
+        case 'Sales Manager':
+        case 'Sales Executive':
+        case 'CRM Executive':
+            navigate("/leads"); // Sales Dashboard
+            break;
+            
+        case 'Event Operations Manager':
+        case 'Banquet Coordinator':
+        case 'Banquet Manager':
+            navigate("/tasks"); // Ops Dashboard
+            break;
+            
+        case 'F&B Manager':
+        case 'Kitchen Head':
+            navigate("/menus"); // F&B Dashboard
+            break;
+            
+        case 'Accounts Manager':
+            navigate("/billing"); // Finance Dashboard
+            break;
+            
+        default:
+            navigate("/reports"); // Fallback
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
-        <h2 className="text-2xl font-bold text-center mb-6 text-pink-600">Login</h2>
+        <h2 className="text-2xl font-bold text-center mb-2 text-pink-600">Asyncotel Login</h2>
+        <p className="text-center text-gray-500 mb-6 text-sm">Sign in to your account</p>
         
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Email</label>
-            <input 
-              type="email" 
-              className="w-full mt-1 p-2 border rounded focus:ring-pink-500 focus:border-pink-500" 
-              placeholder="admin@asyncotel.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <input type="email" required className="w-full mt-1 p-2 border rounded" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Password</label>
-            <input 
-              type="password" 
-              className="w-full mt-1 p-2 border rounded focus:ring-pink-500 focus:border-pink-500" 
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <input type="password" required className="w-full mt-1 p-2 border rounded" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
           </div>
-          <button type="submit" className="w-full bg-pink-600 text-white py-2 rounded hover:bg-pink-700 font-semibold">
+          <button type="submit" className="w-full bg-pink-600 text-white py-2 rounded hover:bg-pink-700 font-semibold cursor-pointer">
             Login
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-gray-600">
-          Don't have an account? <Link to="/register" className="text-pink-600 hover:underline">Sign up</Link>
-        </p>
-        <div className="mt-6 pt-4 border-t border-gray-100 text-center">
-          <Link to="/super-admin" className="text-xs text-gray-500 hover:text-pink-600 font-medium">Asyncotel Super Admin Login</Link>
-        </div>
+        <div className="mt-4 text-center text-sm"><Link to="/signup" className="text-pink-600 hover:underline">Register New Property</Link></div>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useAuth } from "./AuthContext";
 export default function Sidebar() {
   const { user } = useAuth();
   const role = user?.role;
+  const isSetup = !user?.isSetupComplete;
 
   return (
     <aside className="w-64 bg-white shadow-md hidden md:flex flex-col">
@@ -20,9 +21,11 @@ export default function Sidebar() {
           {role === 'admin' && (
             <>
               <SidebarLink to="/leads" icon="🎯" text="Leads & CRM" />
-              <SidebarLink to="/sales" icon="📈" text="Sales Dashboard" />
-              <SidebarLink to="/coordination" icon="🤝" text="Team Coordination" />
-              <SidebarLink to="/events" icon="📅" text="Events" />
+              <SidebarLink to="/sales" icon="📈" text="Sales Dashboard" locked={isSetup} />
+              <SidebarLink to="/coordination" icon="🤝" text="Team Coordination" locked={isSetup} />
+              <SidebarLink to="/events" icon="📅" text="Events" locked={isSetup} />
+              <SidebarLink to="/task-templates" icon="📋" text="Task Templates (SOP)" locked={isSetup} />
+              <SidebarLink to="/tasks" icon="✅" text="Task Manager" locked={isSetup} />
               <SidebarLink to="/banquet-halls" icon="🏢" text="Banquet Halls" />
               <SidebarLink to="/time-slots" icon="⏰" text="Time Slots" />
               <SidebarLink to="/event-types" icon="🎉" text="Event Types" />
@@ -35,9 +38,10 @@ export default function Sidebar() {
               <SidebarLink to="/inventory" icon="📦" text="Inventory & Store" />
               <SidebarLink to="/vendors" icon="🤝" text="Vendors" />
               <SidebarLink to="/departments" icon="🏷️" text="Departments" />
-              <SidebarLink to="/roles" icon="👥" text="Team & Roles" />
-              <SidebarLink to="#" icon="💰" text="Billing & Accounts" />
-              <SidebarLink to="#" icon="📈" text="Reports" />
+              <SidebarLink to="/roles" icon="️" text="Roles & Permissions" />
+              <SidebarLink to="/users" icon="👥" text="Staff & Users" />
+              <SidebarLink to="#" icon="💰" text="Billing & Accounts" locked={isSetup} />
+              <SidebarLink to="#" icon="📈" text="Reports" locked={isSetup} />
             </>
           )}
 
@@ -60,10 +64,18 @@ export default function Sidebar() {
   );
 }
 
-const SidebarLink = ({ to, icon, text }) => (
+const SidebarLink = ({ to, icon, text, locked }) => (
   <li>
-    <Link to={to} className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg">
-      {icon} {text}
-    </Link>
+    {locked ? (
+      <div className="flex items-center px-4 py-3 text-gray-400 cursor-not-allowed" title="Complete setup to unlock">
+        <span className="opacity-50 mr-2">{icon}</span>
+        <span className="flex-1">{text}</span>
+        <span className="text-xs">🔒</span>
+      </div>
+    ) : (
+      <Link to={to} className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg">
+        <span className="mr-2">{icon}</span> {text}
+      </Link>
+    )}
   </li>
 );

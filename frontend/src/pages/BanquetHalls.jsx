@@ -1,36 +1,46 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AdminLayout from "../layouts/AdminLayout";
-import AddHallModal from "../components/AddHallModal";
+import { useAuth } from "../components/AuthContext";
 
 export default function BanquetHalls() {
+  const { user } = useAuth();
+  const canEdit = ['admin', 'Owner', 'Property Admin'].includes(user?.role);
+
+  // Mock Data - In real app, fetch from API
+  const [halls, setHalls] = useState(() => {
+    const saved = localStorage.getItem("banquetHalls");
+    return saved ? JSON.parse(saved) : [
+      { id: 1, name: "Emerald Hall", type: "Indoor", capacity: "500", rate: "50000" },
+      { id: 2, name: "Sapphire Lawn", type: "Outdoor", capacity: "1000", rate: "80000" },
+      { id: 3, name: "Boardroom A", type: "Conference", capacity: "50", rate: "15000" },
+    ];
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingHall, setEditingHall] = useState(null);
-  const [halls, setHalls] = useState([
-    { id: 1, name: "Emerald Hall", capacity: 500, floor: "Ground Floor", type: "Indoor" },
-    { id: 2, name: "Sapphire Hall", capacity: 250, floor: "First Floor", type: "Indoor" },
-    { id: 3, name: "Rooftop Garden", capacity: 150, floor: "Rooftop", type: "Outdoor" },
-  ]);
+  const [currentHall, setCurrentHall] = useState({ name: "", type: "Indoor", capacity: "", rate: "" });
 
-  const handleAddHall = (newHall) => {
-    setHalls([...halls, { ...newHall, id: Date.now() }]);
+  useEffect(() => {
+    localStorage.setItem("banquetHalls", JSON.stringify(halls));
+  }, [halls]);
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    if (currentHall.id) {
+      setHalls(halls.map(h => h.id === currentHall.id ? currentHall : h));
+    } else {
+      setHalls([...halls, { ...currentHall, id: Date.now() }]);
+    }
+    setIsModalOpen(false);
   };
 
-  const handleDeleteHall = (hallId) => {
-    setHalls(halls.filter(hall => hall.id !== hallId));
-  };
-
-  const handleEditHall = (hallToEdit) => {
-    setEditingHall(hallToEdit);
+  const handleEdit = (hall) => {
+    setCurrentHall(hall);
     setIsModalOpen(true);
   };
 
-  const handleSaveHall = (hallData) => {
-    if (editingHall) {
-      // Update existing hall
-      setHalls(halls.map(h => h.id === hallData.id ? hallData : h));
-    } else {
-      // Add new hall
-      handleAddHall(hallData);
+  const handleDelete = (id) => {
+    if (window.confirm("Are you sure you want to delete this venue?")) {
+      setHalls(halls.filter(h => h.id !== id));
     }
   };
 
@@ -38,59 +48,83 @@ export default function BanquetHalls() {
     <AdminLayout>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Banquet Hall Master</h1>
-          <p className="text-gray-500 text-sm">Manage all venues and halls in your property.</p>
+          <h1 className="text-2xl font-bold text-gray-800">Banquet Halls & Venues</h1>
+          <p className="text-gray-500 text-sm">Manage physical spaces, capacities, and base rates.</p>
         </div>
-        <button
-          onClick={() => {
-            setEditingHall(null);
-            setIsModalOpen(true);
-          }}
-          className="bg-pink-600 text-white px-4 py-2 rounded-lg shadow hover:bg-pink-700 transition"
-        >
-          + Add New Hall
-        </button>
-      </div>
-
-      {/* Hall List Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-sm text-left text-gray-500">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-            <tr>
-              <th className="px-6 py-3">Hall Name</th>
-              <th className="px-6 py-3">Capacity (Max)</th>
-              <th className="px-6 py-3">Floor</th>
-              <th className="px-6 py-3">Type</th>
-              <th className="px-6 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {halls.map((hall) => (
-              <tr key={hall.id} className="border-b hover:bg-gray-50">
-                <td className="px-6 py-4 font-medium text-gray-900">{hall.name}</td>
-                <td className="px-6 py-4">{hall.capacity}</td>
-                <td className="px-6 py-4">{hall.floor}</td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded text-xs ${hall.type === 'Indoor' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
-                    {hall.type}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button onClick={() => handleEditHall(hall)} className="text-blue-600 hover:underline mr-4 font-medium">Edit</button>
-                  <button onClick={() => handleDeleteHall(hall.id)} className="text-red-600 hover:underline font-medium">Delete</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {halls.length === 0 && (
-          <div className="p-6 text-center text-gray-400">
-            No banquet halls found. Click "Add New Hall" to get started.
-          </div>
+        {canEdit && (
+          <button onClick={() => { setCurrentHall({ name: "", type: "Indoor", capacity: "", rate: "" }); setIsModalOpen(true); }} className="bg-pink-600 text-white px-4 py-2 rounded-lg shadow hover:bg-pink-700 transition cursor-pointer">
+            + Add Venue
+          </button>
         )}
       </div>
 
-      {isModalOpen && <AddHallModal onClose={() => setIsModalOpen(false)} onSaveHall={handleSaveHall} existingHall={editingHall} />}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {halls.map((hall) => (
+          <div key={hall.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-3 bg-pink-50 rounded-lg text-2xl">
+                {hall.type === 'Outdoor' ? '🌳' : hall.type === 'Conference' ? '💼' : '🏰'}
+              </div>
+              {canEdit && (
+                <div className="flex gap-2">
+                  <button onClick={() => handleEdit(hall)} className="text-blue-600 text-xs font-medium hover:underline cursor-pointer">Edit</button>
+                  <button onClick={() => handleDelete(hall.id)} className="text-red-600 text-xs font-medium hover:underline cursor-pointer">Delete</button>
+                </div>
+              )}
+            </div>
+            <h3 className="font-bold text-lg text-gray-800 mb-1">{hall.name}</h3>
+            <p className="text-sm text-gray-500 mb-4">{hall.type} Venue</p>
+            
+            <div className="flex justify-between items-center text-sm border-t pt-4">
+              <div>
+                <span className="block text-gray-400 text-xs">Capacity</span>
+                <span className="font-semibold text-gray-700">{hall.capacity} Pax</span>
+              </div>
+              <div className="text-right">
+                <span className="block text-gray-400 text-xs">Base Rate</span>
+                <span className="font-semibold text-gray-700">₹{parseInt(hall.rate).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">{currentHall.id ? 'Edit Venue' : 'Add New Venue'}</h2>
+            <form onSubmit={handleSave} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Venue Name</label>
+                <input type="text" required className="w-full mt-1 p-2 border rounded" value={currentHall.name} onChange={e => setCurrentHall({...currentHall, name: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Type</label>
+                <select className="w-full mt-1 p-2 border rounded" value={currentHall.type} onChange={e => setCurrentHall({...currentHall, type: e.target.value})}>
+                  <option>Indoor</option>
+                  <option>Outdoor</option>
+                  <option>Conference</option>
+                  <option>Poolside</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Max Capacity</label>
+                  <input type="number" required className="w-full mt-1 p-2 border rounded" value={currentHall.capacity} onChange={e => setCurrentHall({...currentHall, capacity: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Base Rate (₹)</label>
+                  <input type="number" required className="w-full mt-1 p-2 border rounded" value={currentHall.rate} onChange={e => setCurrentHall({...currentHall, rate: e.target.value})} />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded cursor-pointer">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-pink-600 text-white rounded cursor-pointer">Save Venue</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }

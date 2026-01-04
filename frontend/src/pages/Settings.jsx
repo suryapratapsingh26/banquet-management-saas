@@ -7,11 +7,23 @@ export default function Settings() {
   const [companyName, setCompanyName] = useState("Grand Banquet Hall");
   const [currency, setCurrency] = useState("INR");
 
+  const handleReset = () => {
+    if (window.confirm("⚠️ DANGER: This will delete all Events, Quotes, Leads, and Tasks.\n\nMaster data (Menus, Inventory, Users) will remain safe.\n\nAre you sure you want to reset the system for a fresh start?")) {
+      localStorage.removeItem("events");
+      localStorage.removeItem("quotations");
+      localStorage.removeItem("leads");
+      localStorage.removeItem("tasks");
+      // We keep: users, inventory, vendors, dishes, packages, taskTemplates
+      alert("System has been reset. All transaction data cleared.");
+      window.location.reload();
+    }
+  };
+
   const handleSave = (e) => {
     e.preventDefault();
     alert("Settings saved successfully!");
   };
-
+                    
   return (
     <AdminLayout>
       <div className="mb-6">
@@ -45,6 +57,14 @@ export default function Settings() {
             </button>
           </div>
         </form>
+
+        <div className="mt-10 pt-6 border-t border-gray-200">
+          <h3 className="text-lg font-medium text-red-600 mb-2">Danger Zone</h3>
+          <p className="text-sm text-gray-500 mb-4">Clear all demo data (Events, Quotes, Leads) to start fresh. Master settings will be preserved.</p>
+          <button onClick={handleReset} className="border border-red-200 bg-red-50 text-red-700 px-4 py-2 rounded hover:bg-red-100 transition cursor-pointer">
+            Reset Transaction Data
+          </button>
+        </div>
       </div>
     </AdminLayout>
   );

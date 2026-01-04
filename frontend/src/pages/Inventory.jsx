@@ -11,9 +11,9 @@ export default function Inventory() {
   const [stockItems, setStockItems] = useState(() => {
     const saved = localStorage.getItem("inventory");
     return saved ? JSON.parse(saved) : [
-      { id: 1, item: "Basmati Rice", category: "Grains", quantity: 50, unit: "kg", reorderLevel: 10, status: "Good" },
-      { id: 2, item: "Cooking Oil", category: "Essentials", quantity: 12, unit: "L", reorderLevel: 20, status: "Low" },
-      { id: 3, item: "Paneer", category: "Dairy", quantity: 5, unit: "kg", reorderLevel: 5, status: "Critical" },
+      { id: 1, item: "Basmati Rice", category: "Grains", quantity: 50, unit: "kg", reorderLevel: 10, status: "Good", unitPrice: 90 },
+      { id: 2, item: "Cooking Oil", category: "Essentials", quantity: 12, unit: "L", reorderLevel: 20, status: "Low", unitPrice: 140 },
+      { id: 3, item: "Paneer", category: "Dairy", quantity: 5, unit: "kg", reorderLevel: 5, status: "Critical", unitPrice: 420 },
     ];
   });
 
@@ -31,19 +31,20 @@ export default function Inventory() {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentItem, setCurrentItem] = useState({ item: "", category: "Grains", quantity: "", unit: "kg", reorderLevel: "" });
+  const [currentItem, setCurrentItem] = useState({ item: "", category: "Grains", quantity: "", unit: "kg", reorderLevel: "", unitPrice: "" });
 
   const handleSaveItem = (e) => {
     e.preventDefault();
     const qty = parseFloat(currentItem.quantity);
     const reorder = parseFloat(currentItem.reorderLevel);
+    const price = parseFloat(currentItem.unitPrice) || 0;
     
     // Auto-calculate status
     let status = "Good";
     if (qty <= reorder) status = "Critical";
     else if (qty <= reorder * 1.2) status = "Low";
 
-    const newItem = { ...currentItem, quantity: qty, reorderLevel: reorder, status };
+    const newItem = { ...currentItem, quantity: qty, reorderLevel: reorder, unitPrice: price, status };
 
     if (currentItem.id) {
       setStockItems(stockItems.map(i => i.id === currentItem.id ? { ...newItem, id: currentItem.id } : i));
@@ -62,7 +63,7 @@ export default function Inventory() {
         </div>
         {canEdit && activeTab === "stock" && (
           <div className="flex gap-2">
-            <button onClick={() => { setCurrentItem({ item: "", category: "Grains", quantity: "", unit: "kg", reorderLevel: "" }); setIsModalOpen(true); }} className="bg-pink-600 text-white px-4 py-2 rounded-lg shadow hover:bg-pink-700 transition cursor-pointer">
+            <button onClick={() => { setCurrentItem({ item: "", category: "Grains", quantity: "", unit: "kg", reorderLevel: "", unitPrice: "" }); setIsModalOpen(true); }} className="bg-pink-600 text-white px-4 py-2 rounded-lg shadow hover:bg-pink-700 transition cursor-pointer">
               + Add Stock Item
             </button>
           </div>
@@ -93,6 +94,7 @@ export default function Inventory() {
               <th className="px-6 py-3">{activeTab === "stock" ? "Item Name" : "Vendor"}</th>
               <th className="px-6 py-3">Category</th>
               <th className="px-6 py-3">{activeTab === "stock" ? "Current Stock" : "Contact Info"}</th>
+              {activeTab === "stock" && <th className="px-6 py-3">Unit Price</th>}
               {activeTab === "stock" && <th className="px-6 py-3">Status</th>}
               {activeTab === "stock" && canEdit && <th className="px-6 py-3 text-right">Actions</th>}
             </tr>
@@ -103,6 +105,7 @@ export default function Inventory() {
                 <td className="px-6 py-4 font-medium text-gray-900">{activeTab === "stock" ? item.item : item.name}</td>
                 <td className="px-6 py-4">{item.category}</td>
                 <td className="px-6 py-4">{activeTab === "stock" ? `${item.quantity} ${item.unit}` : item.contact}</td>
+                {activeTab === "stock" && <td className="px-6 py-4">₹{item.unitPrice}</td>}
                 {activeTab === "stock" && (
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded text-xs font-bold ${item.status === "Good" ? "bg-green-100 text-green-800" : item.status === "Low" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>
@@ -157,6 +160,10 @@ export default function Inventory() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Reorder Level</label>
                   <input type="number" required className="w-full mt-1 p-2 border rounded" value={currentItem.reorderLevel} onChange={e => setCurrentItem({...currentItem, reorderLevel: e.target.value})} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Unit Price (₹)</label>
+                  <input type="number" required className="w-full mt-1 p-2 border rounded" value={currentItem.unitPrice} onChange={e => setCurrentItem({...currentItem, unitPrice: e.target.value})} />
                 </div>
               </div>
               <div className="flex justify-end gap-3 pt-4">

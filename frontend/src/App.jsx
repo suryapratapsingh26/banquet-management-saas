@@ -9,20 +9,21 @@ import Dashboard from "./pages/Dashboard";
 import SetupDashboard from "./pages/SetupDashboard";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import Leads from "./pages/Leads";
-import FnB from "./pages/FnB";
+// import FnB from "./pages/FnB";
 import Reports from "./pages/Reports";
 import BanquetHalls from "./pages/BanquetHalls";
-import TimeSlots from "./pages/TimeSlots";
-import EventTypes from "./pages/EventTypes";
-import Departments from "./pages/Departments";
-import Roles from "./pages/Roles";
+// import TimeSlots from "./pages/TimeSlots";
+// import EventTypes from "./pages/EventTypes";
+// import Departments from "./pages/Departments";
+// import Roles from "./pages/Roles";
 import Users from "./pages/Users";
 import Menus from "./pages/Menus";
-import Packages from "./pages/Packages";
-import Services from "./pages/Services";
-import Taxes from "./pages/Taxes";
-import PaymentModes from "./pages/PaymentModes";
+// import Packages from "./pages/Packages";
+// import Services from "./pages/Services";
+// import Taxes from "./pages/Taxes";
+// import PaymentModes from "./pages/PaymentModes";
 import Vendors from "./pages/Vendors";
+import Quotations from "./pages/Quotations";
 import Settings from "./pages/Settings";
 import Events from "./pages/Events";
 import EventDetails from "./pages/EventDetails";
@@ -56,7 +57,7 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/super-admin" element={<SuperAdminLogin />} />
-          <Route path="/register" element={<Signup />} />
+          <Route path="/signup" element={<Signup />} />
           <Route path="/setup" element={<ProtectedRoute><SetupOrganization /></ProtectedRoute>} />
 
           {/* Protected Routes */}
@@ -64,19 +65,20 @@ export default function App() {
           <Route path="/super-admin-dashboard" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
           <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-          <Route path="/fnb" element={<ProtectedRoute><FnB /></ProtectedRoute>} />
+          {/* <Route path="/fnb" element={<ProtectedRoute><FnB /></ProtectedRoute>} /> */}
           <Route path="/banquet-halls" element={<ProtectedRoute><BanquetHalls /></ProtectedRoute>} />
-          <Route path="/time-slots" element={<ProtectedRoute><TimeSlots /></ProtectedRoute>} />
-          <Route path="/event-types" element={<ProtectedRoute><EventTypes /></ProtectedRoute>} />
-          <Route path="/departments" element={<ProtectedRoute><Departments /></ProtectedRoute>} />
-          <Route path="/roles" element={<ProtectedRoute><Roles /></ProtectedRoute>} />
+          {/* <Route path="/time-slots" element={<ProtectedRoute><TimeSlots /></ProtectedRoute>} /> */}
+          {/* <Route path="/event-types" element={<ProtectedRoute><EventTypes /></ProtectedRoute>} /> */}
+          {/* <Route path="/departments" element={<ProtectedRoute><Departments /></ProtectedRoute>} /> */}
+          {/* <Route path="/roles" element={<ProtectedRoute><Roles /></ProtectedRoute>} /> */}
           <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
           <Route path="/menus" element={<ProtectedRoute><Menus /></ProtectedRoute>} />
-          <Route path="/packages" element={<ProtectedRoute><Packages /></ProtectedRoute>} />
-          <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} />
-          <Route path="/taxes" element={<ProtectedRoute><Taxes /></ProtectedRoute>} />
-          <Route path="/payment-modes" element={<ProtectedRoute><PaymentModes /></ProtectedRoute>} />
+          {/* <Route path="/packages" element={<ProtectedRoute><Packages /></ProtectedRoute>} /> */}
+          {/* <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} /> */}
+          {/* <Route path="/taxes" element={<ProtectedRoute><Taxes /></ProtectedRoute>} /> */}
+          {/* <Route path="/payment-modes" element={<ProtectedRoute><PaymentModes /></ProtectedRoute>} /> */}
           <Route path="/vendors" element={<ProtectedRoute><Vendors /></ProtectedRoute>} />
+          <Route path="/quotations" element={<ProtectedRoute><Quotations /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
           <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
@@ -86,7 +88,7 @@ export default function App() {
           <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
           <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
           <Route path="/audits" element={<ProtectedRoute><Audits /></ProtectedRoute>} />
-          <Route path="/coordination" element={<ProtectedRoute><EventCoordinationDashboard /></ProtectedRoute>} />
+          {/* <Route path="/coordination" element={<ProtectedRoute><EventCoordinationDashboard /></ProtectedRoute>} /> */}
           
           {/* Role-Based Dashboards (also protected) */}
           <Route path="/sales" element={<ProtectedRoute><SalesDashboard /></ProtectedRoute>} />

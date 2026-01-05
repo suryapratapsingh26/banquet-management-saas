@@ -33,7 +33,7 @@ export default function Reports({ title }) {
         <h1 className="text-2xl font-bold text-gray-800">
           {title === "Dashboard" ? `Welcome, ${user?.name?.split(' ')[0] || 'User'} 👋` : (title || "Reports & Analytics")}
         </h1>
-        <p className="text-gray-500 text-sm">Key performance indicators for your banquet business.</p>
+        <p className="text-gray-500 text-sm">Key metrics and performance overview.</p>
       </div>
 
       {/* KPI Cards */}

@@ -1,6 +1,7 @@
 import Reports from "./Reports";
 
 export default function Dashboard() {
-  // Render Reports directly. Global layout is handled by the Router (App.jsx)
+  // Dashboard view using Reports component
+  // Global layout is handled by App.jsx, so no extra wrapper here.
   return <Reports title="Dashboard" />;
 }

@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import AdminLayout from "../layouts/AdminLayout";
+import { useAuth } from "../components/AuthContext";
 
 export default function EventDetails() {
+  const { user } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
@@ -10,70 +11,78 @@ export default function EventDetails() {
   const [inventory, setInventory] = useState([]);
   const [quote, setQuote] = useState(null);
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [isDamageModalOpen, setIsDamageModalOpen] = useState(false);
 
   useEffect(() => {
-    // 1. Fetch Event
-    const events = JSON.parse(localStorage.getItem("events")) || [];
-    const foundEvent = events.find(e => e.id === parseInt(id));
-    
-    if (foundEvent) {
-      setEvent(foundEvent);
-      
-      // 2. Fetch Package & Dishes to build the Menu
-      const packages = JSON.parse(localStorage.getItem("packages")) || [];
-      const dishes = JSON.parse(localStorage.getItem("dishes")) || [];
-      
-      const pkg = packages.find(p => p.id === foundEvent.packageId);
-      if (pkg) {
-        const items = pkg.selectedDishIds.map(dishId => dishes.find(d => d.id === dishId)).filter(Boolean);
-        setMenuItems(items);
-      }
+    const fetchData = async () => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const headers = { 'Authorization': `Bearer ${token}` };
 
-      // 3. Fetch Inventory
-      const savedInventory = JSON.parse(localStorage.getItem("inventory")) || [];
-      setInventory(savedInventory);
+        // 1. Fetch Event
+        const eventRes = await fetch(`http://localhost:5000/api/events/${id}`, { headers });
+        if (!eventRes.ok) return;
+        const eventData = await eventRes.json();
+        setEvent(eventData);
 
-      // 4. Fetch Quote for Revenue
-      const quotes = JSON.parse(localStorage.getItem("quotations")) || [];
-      const foundQuote = quotes.find(q => q.id === foundEvent.quoteId);
-      setQuote(foundQuote);
-    }
-  }, [id]);
+        // 2. Fetch Package & Dishes
+        const [pkgRes, dishRes, invRes, quoteRes] = await Promise.all([
+          fetch('http://localhost:5000/api/packages', { headers }),
+          fetch('http://localhost:5000/api/dishes', { headers }),
+          fetch('http://localhost:5000/api/inventory', { headers }),
+          fetch('http://localhost:5000/api/quotations', { headers })
+        ]);
 
-  const handleDeductInventory = () => {
-    if (event.inventoryDeducted) return;
+        const packages = await pkgRes.json();
+        const dishes = await dishRes.json();
+        const inventoryData = await invRes.json();
+        const quotes = await quoteRes.json();
+
+        const pkg = packages.find(p => p.id === eventData.package_id); // Note: DB uses snake_case, API might return camelCase depending on server.js mapping. Server.js maps to camelCase for some, but let's check. Server.js for events returns raw rows? No, it maps. Wait, server.js for /api/events/:id returns raw row. So it is snake_case: package_id.
+        // Correction: My server.js code for /api/events/:id returns `eventRes.rows[0]`. So it is snake_case.
+        // But my frontend code expects camelCase usually. Let's adapt.
+        
+        if (pkg) {
+          const items = pkg.selectedDishIds.map(dishId => dishes.find(d => d.id === dishId)).filter(Boolean);
+          setMenuItems(items);
+        }
+        setInventory(inventoryData);
+        setQuote(quotes.find(q => q.id === eventData.quote_id));
+
+      } catch (error) { console.error(error); }
+    };
+    fetchData();
+  }, [id, user]);
+
+  const handleDeductInventory = async () => {
+    if (event.inventory_deducted) return;
     if (!window.confirm(`This will deduct ingredients for ${event.pax} PAX from the Main Store. Proceed?`)) return;
 
-    let updatedInventory = [...inventory];
-    
+    const itemsToDeduct = [];
     menuItems.forEach(dish => {
       if (dish.ingredients) {
         dish.ingredients.forEach(ing => {
-          const totalNeeded = ing.qty * event.pax;
-          const stockIndex = updatedInventory.findIndex(i => i.id === ing.id);
-          
-          if (stockIndex > -1) {
-            // Deduct stock (prevent negative for now, or allow it to show deficit)
-            updatedInventory[stockIndex].quantity = Math.max(0, updatedInventory[stockIndex].quantity - totalNeeded);
-          }
+          itemsToDeduct.push({ id: ing.id, qtyToRemove: ing.qty * event.pax });
         });
       }
     });
 
-    // Save Updates
-    localStorage.setItem("inventory", JSON.stringify(updatedInventory));
-    setInventory(updatedInventory);
-
-    // Update Event Status
-    const events = JSON.parse(localStorage.getItem("events")) || [];
-    const updatedEvents = events.map(e => e.id === event.id ? { ...e, inventoryDeducted: true, status: "Completed" } : e);
-    localStorage.setItem("events", JSON.stringify(updatedEvents));
-    
-    setEvent({ ...event, inventoryDeducted: true, status: "Completed" });
-    alert("Inventory deducted successfully! Stock levels updated.");
+    try {
+      const token = await user.getIdToken();
+      await fetch(`http://localhost:5000/api/events/${id}/deduct-inventory`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ items: itemsToDeduct })
+      });
+      
+      setEvent({ ...event, inventory_deducted: true, status: "Completed" });
+      alert("Inventory deducted successfully! Stock levels updated.");
+      // Ideally refetch inventory here
+    } catch (error) { console.error(error); }
   };
 
-  if (!event) return <AdminLayout>Loading...</AdminLayout>;
+  if (!event) return <div className="p-6">Loading...</div>;
 
   // Calculate Forecast
   const ingredientTotals = {};
@@ -88,7 +97,7 @@ export default function EventDetails() {
   const forecastList = Object.values(ingredientTotals);
 
   // Calculate Financials (Real-time based on current inventory prices)
-  const totalRevenue = quote ? parseFloat(quote.totalAmount) : 0;
+  const totalRevenue = quote ? parseFloat(quote.totalAmount || quote.total_amount) : 0; // Handle both camel/snake case
   
   let realTimeFoodCost = 0;
   forecastList.forEach(ing => {
@@ -109,24 +118,44 @@ export default function EventDetails() {
     fireSafety: false
   });
 
-  const handleSaveAudit = (e) => {
+  const [damageReport, setDamageReport] = useState({ description: "", cost: 0 });
+
+  const handleSaveDamage = async (e) => {
+    e.preventDefault();
+    try {
+      const token = await user.getIdToken();
+      await fetch(`http://localhost:5000/api/events/${id}/damage`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ description: damageReport.description, cost: parseFloat(damageReport.cost) })
+      });
+      
+      setEvent({ ...event, damage_description: damageReport.description, damage_cost: parseFloat(damageReport.cost) });
+      setIsDamageModalOpen(false);
+      alert(`⚠️ Damage reported. ₹${damageReport.cost} has been added to the final bill.`);
+    } catch (error) { console.error(error); }
+  };
+
+  const handleSaveAudit = async (e) => {
     e.preventDefault();
     const isPassed = Object.values(auditForm).every(val => val === true);
     const status = isPassed ? "Passed" : "Failed";
     
-    const events = JSON.parse(localStorage.getItem("events")) || [];
-    const updatedEvents = events.map(e => e.id === event.id ? { ...e, auditStatus: status } : e);
-    localStorage.setItem("events", JSON.stringify(updatedEvents));
-    
-    setEvent({ ...event, auditStatus: status });
-    setIsAuditModalOpen(false);
-    
-    if(isPassed) alert("✅ Audit Passed! Event is ready to go live.");
-    else alert("❌ Audit Failed. Please rectify issues and re-audit.");
+    try {
+      const token = await user.getIdToken();
+      await fetch(`http://localhost:5000/api/events/${id}/audit`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status })
+      });
+      setEvent({ ...event, audit_status: status });
+      setIsAuditModalOpen(false);
+      if(isPassed) alert("✅ Audit Passed! Event is ready to go live.");
+    } catch (error) { console.error(error); }
   };
 
   return (
-    <AdminLayout>
+    <>
       <div className="flex justify-between items-start mb-6">
         <div>
           <div className="flex items-center gap-2">
@@ -136,8 +165,9 @@ export default function EventDetails() {
           <p className="text-gray-500 text-sm mt-1">Function Sheet #{event.id}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setIsAuditModalOpen(true)} className={`px-4 py-2 rounded shadow text-white ${event.auditStatus === 'Passed' ? 'bg-green-600' : 'bg-orange-500 hover:bg-orange-600'}`}>{event.auditStatus === 'Passed' ? 'Audit Passed ✅' : '📋 Conduct Audit'}</button>
+          <button onClick={() => setIsAuditModalOpen(true)} className={`px-4 py-2 rounded shadow text-white ${event.audit_status === 'Passed' ? 'bg-green-600' : 'bg-orange-500 hover:bg-orange-600'}`}>{event.audit_status === 'Passed' ? 'Audit Passed ✅' : '📋 Conduct Audit'}</button>
           <button onClick={() => window.print()} className="bg-gray-800 text-white px-4 py-2 rounded shadow hover:bg-gray-700">Print BEO</button>
+          <button onClick={() => setIsDamageModalOpen(true)} className="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700">Report Damage</button>
         </div>
       </div>
 
@@ -150,7 +180,13 @@ export default function EventDetails() {
             <div><span className="text-gray-500 block">Date</span><span className="font-medium">{event.date}</span></div>
             <div><span className="text-gray-500 block">Guaranteed PAX</span><span className="font-medium text-xl text-pink-600">{event.pax}</span></div>
             <div><span className="text-gray-500 block">Status</span><span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">Confirmed</span></div>
-            <div><span className="text-gray-500 block">Audit</span><span className={`px-2 py-1 rounded text-xs font-bold ${event.auditStatus === 'Passed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{event.auditStatus || 'Pending'}</span></div>
+            <div><span className="text-gray-500 block">Audit</span><span className={`px-2 py-1 rounded text-xs font-bold ${event.audit_status === 'Passed' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>{event.audit_status || 'Pending'}</span></div>
+            {event.damage_cost > 0 && (
+              <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded">
+                <span className="text-red-600 block text-xs font-bold">⚠️ Damage Reported</span>
+                <span className="text-red-800 font-medium">₹{event.damage_cost} ({event.damage_description})</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -186,7 +222,7 @@ export default function EventDetails() {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 md:col-span-3">
           <div className="flex justify-between items-center mb-4">
             <h3 className="font-bold text-gray-800">Raw Material Consumption Forecast</h3>
-            {!event.inventoryDeducted ? (
+            {!event.inventory_deducted ? (
               <button onClick={handleDeductInventory} className="bg-pink-600 text-white px-4 py-2 rounded shadow hover:bg-pink-700 text-sm font-medium cursor-pointer">
                 📉 Deduct from Inventory
               </button>
@@ -283,6 +319,29 @@ export default function EventDetails() {
           </div>
         </div>
       )}
-    </AdminLayout>
+
+      {/* Damage Report Modal */}
+      {isDamageModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+            <h2 className="text-xl font-bold text-red-600 mb-4">Report Post-Event Damage</h2>
+            <form onSubmit={handleSaveDamage} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Description of Damage</label>
+                <input type="text" required className="w-full mt-1 p-2 border rounded" placeholder="e.g. Broken Chair, Carpet Stain" value={damageReport.description} onChange={e => setDamageReport({...damageReport, description: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Cost to Client (₹)</label>
+                <input type="number" required className="w-full mt-1 p-2 border rounded" value={damageReport.cost} onChange={e => setDamageReport({...damageReport, cost: e.target.value})} />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={() => setIsDamageModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded cursor-pointer">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded cursor-pointer">Charge Client</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

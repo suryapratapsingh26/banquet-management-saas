@@ -1,12 +1,11 @@
 import React from "react";
-import AdminLayout from "../layouts/AdminLayout";
 import { useNavigate } from "react-router-dom";
 
 export default function FNBDashboard() {
   const navigate = useNavigate();
 
   return (
-    <AdminLayout>
+    <>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">F&B & Kitchen Dashboard</h1>
         <p className="text-gray-500 text-sm">Menu planning, production, and inventory.</p>
@@ -40,6 +39,6 @@ export default function FNBDashboard() {
           </button>
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 }

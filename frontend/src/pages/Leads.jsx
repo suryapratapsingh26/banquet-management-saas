@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import AdminLayout from "../layouts/AdminLayout";
 import { useAuth } from "../components/AuthContext";
 
 export default function Leads() {
@@ -9,60 +8,91 @@ export default function Leads() {
   // Define who can edit/create leads
   const canEdit = ['Sales Manager', 'Sales Executive', 'CRM Executive', 'admin', 'Banquet Manager'].includes(user?.role);
 
-  // Mock Data - In real app, fetch from API
-  const [leads, setLeads] = useState(() => {
-    const saved = localStorage.getItem("leads");
-    return saved ? JSON.parse(saved) : [
-      { id: 1, client: "Vikram Malhotra", type: "Wedding", date: "2025-12-10", status: "New", budget: "5 Lakhs", contact: "9876500001" },
-      { id: 2, client: "Global Tech Solutions", type: "Conference", date: "2025-11-20", status: "Proposal Sent", budget: "2 Lakhs", contact: "Amit (HR)" },
-      { id: 3, client: "Simran's Sangeet", type: "Social", date: "2025-10-05", status: "Negotiation", budget: "3.5 Lakhs", contact: "Mrs. Kaur" },
-    ];
-  });
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem("leads", JSON.stringify(leads));
-  }, [leads]);
+    fetchLeads();
+  }, [user]);
 
-  const updateStatus = (id, newStatus) => {
+  const fetchLeads = async () => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('http://localhost:5000/api/leads', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setLeads(data);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateStatus = async (id, newStatus) => {
+    // Optimistic UI Update
+    const originalLeads = [...leads];
     const updatedLeads = leads.map(l => l.id === id ? { ...l, status: newStatus } : l);
     setLeads(updatedLeads);
+
+    try {
+      const token = await user.getIdToken();
+      await fetch(`http://localhost:5000/api/leads/${id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+    } catch (error) {
+      console.error("Failed to update status", error);
+      setLeads(originalLeads); // Revert on error
+    }
   };
 
   const handleCreateQuote = (lead) => {
     navigate("/quotations", { state: { lead } }); 
   };
 
-  const handleConvertToEvent = (lead) => {
-    // 1. Check for Accepted Quotation
-    const allQuotes = JSON.parse(localStorage.getItem("quotations")) || [];
-    const acceptedQuote = allQuotes.find(q => q.leadId === lead.id && q.status === "Accepted");
+  const handleConvertToEvent = async (lead) => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      
+      // 1. Fetch quotes to find one for this lead
+      const res = await fetch('http://localhost:5000/api/quotations', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const allQuotes = await res.json();
+      
+      // Find a relevant quote (Draft or Accepted)
+      const leadQuote = allQuotes.find(q => q.leadId === lead.id);
 
-    if (!acceptedQuote) {
-      alert("❌ Cannot convert to Event. No 'Accepted' quotation found for this lead.\nPlease create and finalize a quotation first.");
-      return;
+      if (!leadQuote) {
+        alert("❌ No quotation found for this lead. Please create a proposal first.");
+        navigate("/quotations", { state: { lead } });
+        return;
+      }
+
+      if (window.confirm(`Found quotation for "${leadQuote.packageName}". Confirm booking and create Event?`)) {
+         const confirmRes = await fetch(`http://localhost:5000/api/quotations/${leadQuote.id}/confirm`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` }
+         });
+         if (confirmRes.ok) {
+            alert("✅ Lead converted to Event!");
+            updateStatus(lead.id, "Converted");
+            navigate("/events");
+         } else {
+            alert("Failed to convert lead. Please check if the quotation is valid.");
+         }
+      }
+    } catch (error) {
+      console.error("Error converting lead:", error);
     }
-
-    if (!window.confirm(`Confirm booking for ${lead.client}? This will create a new Event.`)) return;
-    
-    // 2. Create Event Object
-    const newEvent = {
-      id: Date.now(),
-      name: `${lead.client} - ${lead.type}`,
-      type: lead.type,
-      date: lead.date,
-      status: "Confirmed",
-      guestCount: 0, // In real app, pull from quote
-      client: lead.client,
-      details: acceptedQuote // Copy the entire accepted quote for BEO generation
-    };
-
-    // 3. Save to Events (Simulating DB)
-    const existingEvents = JSON.parse(localStorage.getItem("events")) || [];
-    localStorage.setItem("events", JSON.stringify([...existingEvents, newEvent]));
-
-    // 4. Update Lead Status
-    updateStatus(lead.id, "Converted");
-    alert("✅ Lead converted to Event! Check the Events tab.");
   };
 
   const getStatusColor = (status) => {
@@ -77,7 +107,7 @@ export default function Leads() {
   };
 
   return (
-    <AdminLayout>
+    <>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Leads & CRM</h1>
@@ -90,6 +120,7 @@ export default function Leads() {
         )}
       </div>
 
+      {loading ? <div className="text-center p-10">Loading Leads from Database...</div> : (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="w-full text-sm text-left text-gray-500">
           <thead className="text-xs text-gray-700 uppercase bg-gray-50">
@@ -133,6 +164,7 @@ export default function Leads() {
           </tbody>
         </table>
       </div>
-    </AdminLayout>
+      )}
+    </>
   );
 }

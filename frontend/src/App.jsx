@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
+import AdminLayout from "./layouts/AdminLayout";
 import { AuthProvider, useAuth } from "./components/AuthContext";
 import Signup from "./pages/Signup";
 import SetupOrganization from "./pages/SetupOrganization";
@@ -9,19 +10,18 @@ import Dashboard from "./pages/Dashboard";
 import SetupDashboard from "./pages/SetupDashboard";
 import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import Leads from "./pages/Leads";
-// import FnB from "./pages/FnB";
+import FnB from "./pages/FnB";
 import Reports from "./pages/Reports";
 import BanquetHalls from "./pages/BanquetHalls";
-// import TimeSlots from "./pages/TimeSlots";
-// import EventTypes from "./pages/EventTypes";
-// import Departments from "./pages/Departments";
-// import Roles from "./pages/Roles";
+import EventTypes from "./pages/EventTypes";
+import TimeSlots from "./pages/TimeSlots";
+import Departments from "./pages/Departments";
+import Roles from "./pages/Roles";
 import Users from "./pages/Users";
 import Menus from "./pages/Menus";
-// import Packages from "./pages/Packages";
-// import Services from "./pages/Services";
-// import Taxes from "./pages/Taxes";
-// import PaymentModes from "./pages/PaymentModes";
+import Services from "./pages/Services";
+import Taxes from "./pages/Taxes";
+import PaymentModes from "./pages/PaymentModes";
 import Vendors from "./pages/Vendors";
 import Quotations from "./pages/Quotations";
 import Settings from "./pages/Settings";
@@ -34,19 +34,27 @@ import Tasks from "./pages/Tasks";
 import Billing from "./pages/Billing";
 import Audits from "./pages/Audits";
 import ProtectedRoute from "./components/ProtectedRoute";
+import StaffSchedule from "./pages/StaffSchedule";
 import SalesDashboard from "./pages/SalesDashboard";
 import OperationsDashboard from "./pages/OperationsDashboard";
 import FNBDashboard from "./pages/FNBDashboard";
 import AccountsDashboard from "./pages/AccountsDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
-// import FrontDeskDashboard from "./pages/FrontDeskDashboard"; // Not created yet
-// import EventCoordinationDashboard from "./pages/EventCoordinationDashboard"; // Not created yet
+import FrontDeskDashboard from "./pages/FrontDeskDashboard";
+import EventCoordinationDashboard from "./pages/EventCoordinationDashboard";
 
 // Smart Route Component
 const DashboardRoute = () => {
   const { user } = useAuth();
   return user?.isSetupComplete ? <Dashboard /> : <SetupDashboard />;
 };
+
+// Persistent Layout Component
+const AppLayout = () => (
+  <AdminLayout>
+    <Outlet />
+  </AdminLayout>
+);
 
 export default function App() {
   return (
@@ -58,45 +66,49 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/super-admin" element={<SuperAdminLogin />} />
           <Route path="/signup" element={<Signup />} />
-          <Route path="/setup" element={<ProtectedRoute><SetupOrganization /></ProtectedRoute>} />
 
-          {/* Protected Routes */}
-          <Route path="/dashboard" element={<ProtectedRoute><DashboardRoute /></ProtectedRoute>} />
+          {/* Routes without AdminLayout */}
+          <Route path="/setup" element={<ProtectedRoute><SetupOrganization /></ProtectedRoute>} />
           <Route path="/super-admin-dashboard" element={<ProtectedRoute><SuperAdminDashboard /></ProtectedRoute>} />
-          <Route path="/leads" element={<ProtectedRoute><Leads /></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-          {/* <Route path="/fnb" element={<ProtectedRoute><FnB /></ProtectedRoute>} /> */}
-          <Route path="/banquet-halls" element={<ProtectedRoute><BanquetHalls /></ProtectedRoute>} />
-          {/* <Route path="/time-slots" element={<ProtectedRoute><TimeSlots /></ProtectedRoute>} /> */}
-          {/* <Route path="/event-types" element={<ProtectedRoute><EventTypes /></ProtectedRoute>} /> */}
-          {/* <Route path="/departments" element={<ProtectedRoute><Departments /></ProtectedRoute>} /> */}
-          {/* <Route path="/roles" element={<ProtectedRoute><Roles /></ProtectedRoute>} /> */}
-          <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
-          <Route path="/menus" element={<ProtectedRoute><Menus /></ProtectedRoute>} />
-          {/* <Route path="/packages" element={<ProtectedRoute><Packages /></ProtectedRoute>} /> */}
-          {/* <Route path="/services" element={<ProtectedRoute><Services /></ProtectedRoute>} /> */}
-          {/* <Route path="/taxes" element={<ProtectedRoute><Taxes /></ProtectedRoute>} /> */}
-          {/* <Route path="/payment-modes" element={<ProtectedRoute><PaymentModes /></ProtectedRoute>} /> */}
-          <Route path="/vendors" element={<ProtectedRoute><Vendors /></ProtectedRoute>} />
-          <Route path="/quotations" element={<ProtectedRoute><Quotations /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
-          <Route path="/events" element={<ProtectedRoute><Events /></ProtectedRoute>} />
-          <Route path="/events/:id" element={<ProtectedRoute><EventDetails /></ProtectedRoute>} />
-          <Route path="/task-templates" element={<ProtectedRoute><TaskTemplates /></ProtectedRoute>} />
-          <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
-          <Route path="/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
-          <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
-          <Route path="/audits" element={<ProtectedRoute><Audits /></ProtectedRoute>} />
-          {/* <Route path="/coordination" element={<ProtectedRoute><EventCoordinationDashboard /></ProtectedRoute>} /> */}
-          
-          {/* Role-Based Dashboards (also protected) */}
-          <Route path="/sales" element={<ProtectedRoute><SalesDashboard /></ProtectedRoute>} />
-          <Route path="/operations" element={<ProtectedRoute><OperationsDashboard /></ProtectedRoute>} />
-          <Route path="/fnb-dashboard" element={<ProtectedRoute><FNBDashboard /></ProtectedRoute>} />
-          <Route path="/accounts" element={<ProtectedRoute><AccountsDashboard /></ProtectedRoute>} />
-          {/* <Route path="/frontdesk" element={<ProtectedRoute><FrontDeskDashboard /></ProtectedRoute>} /> */}
-          <Route path="/vendor" element={<ProtectedRoute><VendorDashboard /></ProtectedRoute>} />
+
+          {/* Protected Routes with Persistent AdminLayout */}
+          <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+            <Route path="/dashboard" element={<DashboardRoute />} />
+            <Route path="/leads" element={<Leads />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/fnb" element={<FnB />} />
+            <Route path="/banquet-halls" element={<BanquetHalls />} />
+            <Route path="/time-slots" element={<TimeSlots />} />
+            <Route path="/event-types" element={<EventTypes />} />
+            <Route path="/departments" element={<Departments />} />
+            <Route path="/roles" element={<Roles />} />
+            <Route path="/users" element={<Users />} />
+            <Route path="/menus" element={<Menus />} />
+            <Route path="/menu-items" element={<Menus />} />
+            <Route path="/packages" element={<Menus />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/taxes" element={<Taxes />} />
+            <Route path="/payment-modes" element={<PaymentModes />} />
+            <Route path="/vendors" element={<Vendors />} />
+            <Route path="/quotations" element={<Quotations />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/events/:id" element={<EventDetails />} />
+            <Route path="/task-templates" element={<TaskTemplates />} />
+            <Route path="/calendar" element={<Calendar />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/billing" element={<Billing />} />
+            <Route path="/audits" element={<Audits />} />
+            <Route path="/staff-schedule" element={<StaffSchedule />} />
+            <Route path="/coordination" element={<EventCoordinationDashboard />} />
+            <Route path="/sales" element={<SalesDashboard />} />
+            <Route path="/operations" element={<OperationsDashboard />} />
+            <Route path="/fnb-dashboard" element={<FNBDashboard />} />
+            <Route path="/accounts" element={<AccountsDashboard />} />
+            <Route path="/frontdesk" element={<FrontDeskDashboard />} />
+            <Route path="/vendor" element={<VendorDashboard />} />
+          </Route>
         </Routes>
       </AuthProvider>
     </BrowserRouter>

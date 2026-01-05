@@ -1,5 +1,4 @@
 import React from "react";
-import AdminLayout from "../layouts/AdminLayout";
 import { useNavigate } from "react-router-dom";
 
 export default function SalesDashboard() {
@@ -13,7 +12,7 @@ export default function SalesDashboard() {
   ];
 
   return (
-    <AdminLayout>
+    <>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Sales Dashboard</h1>
         <p className="text-gray-500 text-sm">Welcome back! Here is your sales pipeline overview.</p>
@@ -47,6 +46,6 @@ export default function SalesDashboard() {
           </div>
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 }

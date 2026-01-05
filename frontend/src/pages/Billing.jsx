@@ -1,44 +1,45 @@
 import { useState, useEffect } from "react";
-import AdminLayout from "../layouts/AdminLayout";
+import { useAuth } from "../components/AuthContext";
 
 export default function Billing() {
+  const { user } = useAuth();
   const [events, setEvents] = useState([]);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [currentPayment, setCurrentPayment] = useState({ eventId: "", amount: "", mode: "Cash" });
 
   useEffect(() => {
-    const savedEvents = JSON.parse(localStorage.getItem("events")) || [];
-    const savedQuotes = JSON.parse(localStorage.getItem("quotations")) || [];
-    
-    // Merge event with quote data for billing
-    const billingData = savedEvents.map(e => {
-      const q = savedQuotes.find(q => q.id === e.quoteId);
-      return {
-        ...e,
-        totalAmount: q ? q.totalAmount : 0,
-        paidAmount: e.paidAmount || 0,
-        payments: e.payments || []
-      };
-    });
-    setEvents(billingData);
-  }, []);
+    fetchBillingData();
+  }, [user]);
 
-  const handleRecordPayment = (e) => {
+  const fetchBillingData = async () => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('http://localhost:5000/api/billing', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setEvents(await res.json());
+    } catch (error) { console.error(error); }
+  };
+
+  const handleRecordPayment = async (e) => {
     e.preventDefault();
-    const updatedEvents = events.map(ev => {
-      if (ev.id === parseInt(currentPayment.eventId)) {
-        const newPaid = (ev.paidAmount || 0) + parseFloat(currentPayment.amount);
-        const newPaymentEntry = { date: new Date().toISOString().split('T')[0], amount: parseFloat(currentPayment.amount), mode: currentPayment.mode };
-        return { ...ev, paidAmount: newPaid, payments: [...(ev.payments || []), newPaymentEntry] };
-      }
-      return ev;
-    });
-
-    setEvents(updatedEvents);
-    localStorage.setItem("events", JSON.stringify(updatedEvents));
-    setIsPaymentModalOpen(false);
-    setCurrentPayment({ eventId: "", amount: "", mode: "Cash" });
-    alert("Payment recorded successfully!");
+    try {
+      const token = await user.getIdToken();
+      await fetch('http://localhost:5000/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({
+          eventId: currentPayment.eventId,
+          amount: parseFloat(currentPayment.amount),
+          mode: currentPayment.mode
+        })
+      });
+      fetchBillingData();
+      setIsPaymentModalOpen(false);
+      setCurrentPayment({ eventId: "", amount: "", mode: "Cash" });
+      alert("Payment recorded successfully!");
+    } catch (error) { console.error(error); }
   };
 
   const getPaymentStatus = (total, paid) => {
@@ -47,8 +48,70 @@ export default function Billing() {
     return <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-bold">Unpaid</span>;
   };
 
+  const handlePrintInvoice = (ev) => {
+    const printWindow = window.open('', '', 'width=800,height=800');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice #${ev.id}</title>
+          <style>
+            body { font-family: sans-serif; padding: 40px; color: #333; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e91e63; padding-bottom: 20px; margin-bottom: 30px; }
+            .logo { font-size: 24px; font-weight: bold; color: #e91e63; }
+            .invoice-title { font-size: 32px; font-weight: bold; color: #333; text-align: right; }
+            .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
+            .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            .table th { background: #f8f9fa; padding: 12px; text-align: left; border-bottom: 2px solid #ddd; }
+            .table td { padding: 12px; border-bottom: 1px solid #eee; }
+            .totals { text-align: right; margin-top: 20px; }
+            .totals div { margin-bottom: 5px; }
+            .grand-total { font-size: 20px; font-weight: bold; color: #e91e63; border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px; }
+            .footer { margin-top: 50px; font-size: 12px; color: #666; text-align: center; border-top: 1px solid #ddd; padding-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="logo">Asyncotel Banquets</div>
+              <p>123 Event Street, City Center<br>Phone: +91 88893 65318</p>
+            </div>
+            <div class="invoice-title">INVOICE</div>
+          </div>
+
+          <div class="details-grid">
+            <div>
+              <strong>Bill To:</strong><br>
+              ${ev.title.split('-')[0]}<br>
+              Event Date: ${ev.date}
+            </div>
+            <div style="text-align: right;">
+              <strong>Invoice #:</strong> INV-${ev.id}<br>
+              <strong>Date:</strong> ${new Date().toISOString().split('T')[0]}
+            </div>
+          </div>
+
+          <table class="table">
+            <tr><th>Description</th><th style="text-align: right;">Amount</th></tr>
+            <tr><td>Banquet Services (Package: ${ev.title.split('-')[1]})</td><td style="text-align: right;">₹${ev.totalAmount.toLocaleString()}</td></tr>
+            ${ev.damageCost > 0 ? `<tr><td style="color: red;">Damage Charges: ${ev.damageDescription}</td><td style="text-align: right; color: red;">₹${ev.damageCost.toLocaleString()}</td></tr>` : ''}
+          </table>
+
+          <div class="totals">
+            <div>Total Amount: ₹${ev.totalAmount.toLocaleString()}</div>
+            <div>Less: Paid Amount: ₹${ev.paidAmount.toLocaleString()}</div>
+            <div class="grand-total">Balance Due: ₹${(ev.totalAmount - ev.paidAmount).toLocaleString()}</div>
+          </div>
+
+          <div class="footer">Thank you for your business! Please pay the balance before the event date.</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   return (
-    <AdminLayout>
+    <>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Billing & Invoices</h1>
         <p className="text-gray-500 text-sm">Manage event payments and generate invoices.</p>
@@ -84,6 +147,9 @@ export default function Billing() {
                   >
                     Record Payment
                   </button>
+                  <button onClick={() => handlePrintInvoice(ev)} className="text-gray-600 hover:underline font-medium ml-3">
+                    Invoice
+                  </button>
                 </td>
               </tr>
             ))}
@@ -118,6 +184,6 @@ export default function Billing() {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }

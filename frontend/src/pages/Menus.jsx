@@ -1,25 +1,38 @@
 import { useState, useEffect } from "react";
-import AdminLayout from "../layouts/AdminLayout";
+import { useLocation } from "react-router-dom";
+import { useAuth } from "../components/AuthContext";
 
 export default function Menus() {
-  const [activeTab, setActiveTab] = useState("dishes");
+  const { user } = useAuth();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.pathname === '/packages' ? 'packages' : 'dishes');
   const [dishes, setDishes] = useState([]);
   const [packages, setPackages] = useState([]);
   const [inventory, setInventory] = useState([]);
 
   // Load Data
   useEffect(() => {
-    const savedDishes = JSON.parse(localStorage.getItem("dishes")) || [];
-    const savedPackages = JSON.parse(localStorage.getItem("packages")) || [];
-    const savedInventory = JSON.parse(localStorage.getItem("inventory")) || [];
-    setDishes(savedDishes);
-    setPackages(savedPackages);
-    setInventory(savedInventory);
-  }, []);
+    const fetchData = async () => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const headers = { 'Authorization': `Bearer ${token}` };
+        
+        const [dishRes, pkgRes, invRes] = await Promise.all([
+          fetch('http://localhost:5000/api/dishes', { headers }),
+          fetch('http://localhost:5000/api/packages', { headers }),
+          fetch('http://localhost:5000/api/inventory', { headers })
+        ]);
 
-  // Save Data
-  useEffect(() => { localStorage.setItem("dishes", JSON.stringify(dishes)); }, [dishes]);
-  useEffect(() => { localStorage.setItem("packages", JSON.stringify(packages)); }, [packages]);
+        if (dishRes.ok) setDishes(await dishRes.json());
+        if (pkgRes.ok) setPackages(await pkgRes.json());
+        if (invRes.ok) setInventory(await invRes.json());
+      } catch (error) {
+        console.error("Error fetching menu data:", error);
+      }
+    };
+    fetchData();
+  }, [user]);
 
   // --- DISH MANAGEMENT ---
   const [isDishModalOpen, setIsDishModalOpen] = useState(false);
@@ -58,11 +71,29 @@ export default function Menus() {
     return ingredients.reduce((sum, item) => sum + item.cost, 0);
   };
 
-  const handleSaveDish = (e) => {
+  const handleSaveDish = async (e) => {
     e.preventDefault();
     const costPrice = calculateDishCost(currentDish.ingredients);
-    const newDish = { ...currentDish, id: Date.now(), costPrice };
-    setDishes([...dishes, newDish]);
+    const dishData = { ...currentDish, costPrice };
+    
+    try {
+      const token = await user.getIdToken();
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+      
+      if (currentDish.id) {
+        await fetch(`http://localhost:5000/api/dishes/${currentDish.id}`, {
+          method: 'PUT', headers, body: JSON.stringify(dishData)
+        });
+      } else {
+        await fetch('http://localhost:5000/api/dishes', {
+          method: 'POST', headers, body: JSON.stringify(dishData)
+        });
+      }
+      // Refresh logic would go here, simplified for brevity
+      window.location.reload();
+    } catch (error) {
+      console.error("Error saving dish", error);
+    }
     setIsDishModalOpen(false);
   };
 
@@ -82,7 +113,7 @@ export default function Menus() {
   // Real-time Cost Calculation
   const pkgFoodCost = currentPkg.selectedDishIds.reduce((sum, id) => {
     const d = dishes.find(x => x.id === id);
-    return sum + (d ? d.costPrice : 0);
+    return sum + (d ? (d.costPrice || 0) : 0);
   }, 0);
 
   const toggleDishInPkg = (dishId) => {
@@ -101,14 +132,22 @@ export default function Menus() {
     return price.toFixed(0);
   };
 
-  const handleSavePkg = (e) => {
+  const handleSavePkg = async (e) => {
     e.preventDefault();
-    setPackages([...packages, { ...currentPkg, id: Date.now() }]);
+    try {
+      const token = await user.getIdToken();
+      await fetch('http://localhost:5000/api/packages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(currentPkg)
+      });
+      window.location.reload();
+    } catch (error) { console.error(error); }
     setIsPkgModalOpen(false);
   };
 
   return (
-    <AdminLayout>
+    <>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Menu Engineering</h1>
@@ -144,6 +183,7 @@ export default function Menus() {
                 <th className="px-6 py-3">Food Cost (Auto)</th>
                 <th className="px-6 py-3">Selling Price</th>
                 <th className="px-6 py-3">Margin</th>
+                <th className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -153,12 +193,15 @@ export default function Menus() {
                   <tr key={dish.id} className="border-b hover:bg-gray-50">
                     <td className="px-6 py-4 font-medium text-gray-900">{dish.name}</td>
                     <td className="px-6 py-4">{dish.category}</td>
-                    <td className="px-6 py-4 text-red-600 font-medium">₹{dish.costPrice.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-red-600 font-medium">₹{(dish.costPrice || 0).toFixed(2)}</td>
                     <td className="px-6 py-4 text-green-600 font-medium">₹{dish.sellingPrice}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded text-xs ${margin > 60 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                         {margin}%
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => { setCurrentDish(dish); setIsDishModalOpen(true); }} className="text-blue-600 hover:underline text-xs font-medium cursor-pointer">Edit</button>
                     </td>
                   </tr>
                 );
@@ -203,7 +246,7 @@ export default function Menus() {
       {isDishModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Create New Dish</h2>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">{currentDish.id ? 'Edit Dish' : 'Create New Dish'}</h2>
             <form onSubmit={handleSaveDish} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -231,7 +274,9 @@ export default function Menus() {
                 <div className="flex gap-2 mb-2">
                   <select className="flex-1 p-2 border rounded text-sm" value={selectedIngId} onChange={e => setSelectedIngId(e.target.value)}>
                     <option value="">Select Ingredient from Inventory...</option>
-                    {inventory.map(i => <option key={i.id} value={i.id}>{i.item} (₹{i.unitPrice}/{i.unit})</option>)}
+                    {inventory
+                      .filter(invItem => !currentDish.ingredients.some(addedIng => addedIng.id === invItem.id))
+                      .map(i => <option key={i.id} value={i.id}>{i.item} (₹{i.unitPrice || 0}/{i.unit})</option>)}
                   </select>
                   <input type="number" placeholder="Qty" className="w-20 p-2 border rounded text-sm" value={ingQty} onChange={e => setIngQty(e.target.value)} />
                   <button type="button" onClick={addIngredientToDish} className="bg-blue-600 text-white px-3 rounded text-sm">Add</button>
@@ -352,6 +397,6 @@ export default function Menus() {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }

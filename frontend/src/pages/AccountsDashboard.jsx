@@ -1,12 +1,11 @@
 import React from "react";
-import AdminLayout from "../layouts/AdminLayout";
 import { useNavigate } from "react-router-dom";
 
 export default function AccountsDashboard() {
   const navigate = useNavigate();
 
   return (
-    <AdminLayout>
+    <>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Finance & Accounts</h1>
         <p className="text-gray-500 text-sm">Invoicing, payments, and revenue tracking.</p>
@@ -36,6 +35,6 @@ export default function AccountsDashboard() {
           </button>
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 }

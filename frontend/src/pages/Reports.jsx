@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function Reports({ title }) {
   const { user } = useAuth();
@@ -12,7 +13,7 @@ export default function Reports({ title }) {
       if (!user) return;
       try {
         const token = await user.getIdToken();
-        const res = await fetch('http://localhost:5000/api/reports/stats', {
+        const res = await fetch(`${API_URL}/api/reports/stats`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {

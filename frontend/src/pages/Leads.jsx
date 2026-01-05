@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function Leads() {
   const { user } = useAuth();
@@ -19,7 +20,7 @@ export default function Leads() {
     if (!user) return;
     try {
       const token = await user.getIdToken();
-      const response = await fetch('http://localhost:5000/api/leads', {
+      const response = await fetch(`${API_URL}/api/leads`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -39,7 +40,7 @@ export default function Leads() {
 
     try {
       const token = await user.getIdToken();
-      await fetch(`http://localhost:5000/api/leads/${id}`, {
+      await fetch(`${API_URL}/api/leads/${id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -63,7 +64,7 @@ export default function Leads() {
       const token = await user.getIdToken();
       
       // 1. Fetch quotes to find one for this lead
-      const res = await fetch('http://localhost:5000/api/quotations', {
+      const res = await fetch(`${API_URL}/api/quotations`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const allQuotes = await res.json();
@@ -78,7 +79,7 @@ export default function Leads() {
       }
 
       if (window.confirm(`Found quotation for "${leadQuote.packageName}". Confirm booking and create Event?`)) {
-         const confirmRes = await fetch(`http://localhost:5000/api/quotations/${leadQuote.id}/confirm`, {
+         const confirmRes = await fetch(`${API_URL}/api/quotations/${leadQuote.id}/confirm`, {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}` }
          });

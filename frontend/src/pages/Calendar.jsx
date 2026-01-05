@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function Calendar() {
   const { user } = useAuth();
@@ -12,7 +13,7 @@ export default function Calendar() {
     const fetchEvents = async () => {
       if (!user) return;
       const token = await user.getIdToken();
-      const res = await fetch('http://localhost:5000/api/events', {
+      const res = await fetch(`${API_URL}/api/events`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) setEvents(await res.json());

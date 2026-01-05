@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function Quotations() {
   const { user } = useAuth();
@@ -19,10 +20,10 @@ export default function Quotations() {
         const headers = { 'Authorization': `Bearer ${token}` };
         
         const [qRes, pRes, lRes, hRes] = await Promise.all([
-          fetch('http://localhost:5000/api/quotations', { headers }),
-          fetch('http://localhost:5000/api/packages', { headers }),
-          fetch('http://localhost:5000/api/leads', { headers }),
-          fetch('http://localhost:5000/api/banquet-halls', { headers })
+          fetch(`${API_URL}/api/quotations`, { headers }),
+          fetch(`${API_URL}/api/packages`, { headers }),
+          fetch(`${API_URL}/api/leads`, { headers }),
+          fetch(`${API_URL}/api/banquet-halls`, { headers })
         ]);
 
         if (qRes.ok) setQuotations(await qRes.json());
@@ -65,14 +66,14 @@ export default function Quotations() {
 
     try {
       const token = await user.getIdToken();
-      await fetch('http://localhost:5000/api/quotations', {
+      await fetch(`${API_URL}/api/quotations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(quote)
       });
       
       // Refresh list
-      const res = await fetch('http://localhost:5000/api/quotations', {
+      const res = await fetch(`${API_URL}/api/quotations`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) setQuotations(await res.json());
@@ -89,7 +90,7 @@ export default function Quotations() {
 
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`http://localhost:5000/api/quotations/${quote.id}/confirm`, {
+      const res = await fetch(`${API_URL}/api/quotations/${quote.id}/confirm`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });

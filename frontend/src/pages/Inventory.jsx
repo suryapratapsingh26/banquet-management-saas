@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function Inventory() {
   const { user } = useAuth();
@@ -19,8 +20,8 @@ export default function Inventory() {
         const headers = { 'Authorization': `Bearer ${token}` };
         
         const [invRes, vendRes] = await Promise.all([
-          fetch('http://localhost:5000/api/inventory', { headers }),
-          fetch('http://localhost:5000/api/vendors', { headers })
+          fetch(`${API_URL}/api/inventory`, { headers }),
+          fetch(`${API_URL}/api/vendors`, { headers })
         ]);
 
         if (invRes.ok) {
@@ -66,14 +67,14 @@ export default function Inventory() {
 
       if (currentItem.id) {
         // Update existing item
-        await fetch(`http://localhost:5000/api/inventory/${currentItem.id}`, {
+        await fetch(`${API_URL}/api/inventory/${currentItem.id}`, {
           method: 'PUT',
           headers,
           body: JSON.stringify(newItem)
         });
       } else {
         // Create new item
-        await fetch('http://localhost:5000/api/inventory', {
+        await fetch(`${API_URL}/api/inventory`, {
           method: 'POST',
           headers,
           body: JSON.stringify(newItem)

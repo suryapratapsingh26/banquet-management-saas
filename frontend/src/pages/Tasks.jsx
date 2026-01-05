@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function Tasks() {
   const { user } = useAuth();
@@ -13,7 +14,7 @@ export default function Tasks() {
     if (!user) return;
     try {
       const token = await user.getIdToken();
-      const res = await fetch('http://localhost:5000/api/tasks', {
+      const res = await fetch(`${API_URL}/api/tasks`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -29,7 +30,7 @@ export default function Tasks() {
 
   const handleComplete = async (taskId) => {
     const token = await user.getIdToken();
-    await fetch(`http://localhost:5000/api/tasks/${taskId}`, {
+    await fetch(`${API_URL}/api/tasks/${taskId}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ status: "Completed" })
     });
@@ -40,8 +41,10 @@ export default function Tasks() {
     if (task.status === "Completed") return { label: "Completed", color: "bg-green-100 text-green-800" };
     
     const today = new Date().toISOString().split('T')[0];
-    if (task.dueDate < today) return { label: "Escalated 🔥", color: "bg-red-100 text-red-800 font-bold" };
-    if (task.dueDate === today) return { label: "At Risk ⚠️", color: "bg-orange-100 text-orange-800 font-bold" };
+    const taskDate = task.due_date ? task.due_date.split('T')[0] : '';
+    
+    if (taskDate < today) return { label: "Escalated 🔥", color: "bg-red-100 text-red-800 font-bold" };
+    if (taskDate === today) return { label: "At Risk ⚠️", color: "bg-orange-100 text-orange-800 font-bold" };
     return { label: "On Track", color: "bg-blue-100 text-blue-800" };
   };
 
@@ -60,7 +63,7 @@ export default function Tasks() {
             <div>
               <h3 className={`font-medium ${task.status === 'Completed' ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{task.description}</h3>
               <p className="text-xs text-gray-500 mt-1">
-                Event: {task.eventTitle} | Due: {task.dueDate} <span className={`ml-2 px-2 py-0.5 rounded text-[10px] ${sla.color}`}>{sla.label}</span>
+                Event: {task.event_title} | Due: {task.due_date ? task.due_date.split('T')[0] : ''} <span className={`ml-2 px-2 py-0.5 rounded text-[10px] ${sla.color}`}>{sla.label}</span>
               </p>
             </div>
             <div>

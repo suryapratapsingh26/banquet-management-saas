@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -9,7 +10,7 @@ export default function Settings() {
   const handleReset = async () => {
     if (window.confirm("⚠️ DANGER: This will delete all Events, Quotes, Leads, and Tasks.\n\nMaster data (Menus, Inventory, Users) will remain safe.\n\nAre you sure you want to reset the system for a fresh start?")) {
       const token = await user.getIdToken();
-      await fetch('http://localhost:5000/api/settings/reset', {
+      await fetch(`${API_URL}/api/settings/reset`, {
         method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
       });
       alert("System has been reset. All transaction data cleared.");
@@ -27,6 +28,30 @@ export default function Settings() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">System Settings</h1>
         <p className="text-gray-500 text-sm">Configure general application preferences.</p>
+      </div>
+
+      {/* System Status Card */}
+      <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl mb-6 flex justify-between items-center">
+        <div>
+          <h3 className="font-bold text-blue-800">Asyncotel Core (Single Tenant)</h3>
+          <p className="text-xs text-blue-600">Database: PostgreSQL | Backend: Node.js | Status: Online</p>
+          
+          <div className="mt-3 space-y-1">
+            <div className="flex items-center text-[10px] text-gray-600"><span className="text-green-500 mr-2">✅</span> Database Migration (100%)</div>
+            <div className="flex items-center text-[10px] text-gray-600"><span className="text-green-500 mr-2">✅</span> Core Modules (95%)</div>
+            <div className="flex items-center text-[10px] text-gray-600"><span className="text-orange-500 mr-2">⚠️</span> SaaS Multi-Tenancy (10%)</div>
+            <div className="flex items-center text-[10px] text-gray-600"><span className="text-red-500 mr-2">❌</span> Subscriptions (0%)</div>
+          </div>
+
+          <div className="w-full bg-blue-200 rounded-full h-1.5 mt-2 w-48">
+            <div className="bg-blue-600 h-1.5 rounded-full" style={{ width: '75%' }}></div>
+          </div>
+          <p className="text-[10px] text-blue-600 mt-1">Overall SaaS Readiness: 75%</p>
+        </div>
+        <div className="text-right">
+          <span className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold">v1.0.0</span>
+          <p className="text-xs text-gray-500 mt-1">MVP Complete</p>
+        </div>
       </div>
 
       <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 max-w-2xl">

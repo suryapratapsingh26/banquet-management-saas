@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function Users() {
   const { user } = useAuth();
@@ -13,7 +14,7 @@ export default function Users() {
     if (!user) return;
     try {
       const token = await user.getIdToken();
-      const res = await fetch('http://localhost:5000/api/users', {
+      const res = await fetch(`${API_URL}/api/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) setUsers(await res.json());
@@ -41,7 +42,7 @@ export default function Users() {
     e.preventDefault();
     try {
       const token = await user.getIdToken();
-      await fetch('http://localhost:5000/api/users', {
+      await fetch(`${API_URL}/api/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(newUser)
@@ -57,7 +58,7 @@ export default function Users() {
     if (window.confirm("Are you sure you want to remove this user?")) {
       try {
         const token = await user.getIdToken();
-        await fetch(`http://localhost:5000/api/users/${id}`, {
+        await fetch(`${API_URL}/api/users/${id}`, {
           method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
         });
         fetchUsers();

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function Vendors() {
   const { user } = useAuth();
@@ -13,7 +14,7 @@ export default function Vendors() {
       if (!user) return;
       try {
         const token = await user.getIdToken();
-        const response = await fetch('http://localhost:5000/api/vendors', {
+        const response = await fetch(`${API_URL}/api/vendors`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();
@@ -31,7 +32,7 @@ export default function Vendors() {
     e.preventDefault();
     try {
       const token = await user.getIdToken();
-      await fetch(`http://localhost:5000/api/vendors/${currentRating.vendorId}/rate`, {
+      await fetch(`${API_URL}/api/vendors/${currentRating.vendorId}/rate`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -41,7 +42,7 @@ export default function Vendors() {
       });
       
       // Refresh list
-      const response = await fetch('http://localhost:5000/api/vendors', {
+      const response = await fetch(`${API_URL}/api/vendors`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();

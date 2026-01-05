@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function Events() {
   const { user } = useAuth();
@@ -12,7 +13,7 @@ export default function Events() {
       if (!user) return;
       try {
         const token = await user.getIdToken();
-        const response = await fetch('http://localhost:5000/api/events', {
+        const response = await fetch(`${API_URL}/api/events`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await response.json();

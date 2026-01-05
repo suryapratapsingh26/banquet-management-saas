@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function BanquetHalls() {
   const { user } = useAuth();
@@ -19,7 +20,7 @@ export default function BanquetHalls() {
     if (!user) return;
     try {
       const token = await user.getIdToken();
-      const res = await fetch('http://localhost:5000/api/banquet-halls', {
+      const res = await fetch(`${API_URL}/api/banquet-halls`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) setHalls(await res.json());
@@ -32,9 +33,9 @@ export default function BanquetHalls() {
       const token = await user.getIdToken();
       const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
       if (currentHall.id) {
-        await fetch(`http://localhost:5000/api/banquet-halls/${currentHall.id}`, { method: 'PUT', headers, body: JSON.stringify(currentHall) });
+        await fetch(`${API_URL}/api/banquet-halls/${currentHall.id}`, { method: 'PUT', headers, body: JSON.stringify(currentHall) });
       } else {
-        await fetch('http://localhost:5000/api/banquet-halls', { method: 'POST', headers, body: JSON.stringify(currentHall) });
+        await fetch(`${API_URL}/api/banquet-halls`, { method: 'POST', headers, body: JSON.stringify(currentHall) });
       }
       fetchHalls();
       setIsModalOpen(false);
@@ -50,7 +51,7 @@ export default function BanquetHalls() {
     if (window.confirm("Are you sure you want to delete this venue?")) {
       try {
         const token = await user.getIdToken();
-        await fetch(`http://localhost:5000/api/banquet-halls/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        await fetch(`${API_URL}/api/banquet-halls/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
         fetchHalls();
       } catch (error) { console.error(error); }
     }

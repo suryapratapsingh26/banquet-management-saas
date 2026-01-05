@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function EventDetails() {
   const { user } = useAuth();
@@ -21,17 +22,17 @@ export default function EventDetails() {
         const headers = { 'Authorization': `Bearer ${token}` };
 
         // 1. Fetch Event
-        const eventRes = await fetch(`http://localhost:5000/api/events/${id}`, { headers });
+        const eventRes = await fetch(`${API_URL}/api/events/${id}`, { headers });
         if (!eventRes.ok) return;
         const eventData = await eventRes.json();
         setEvent(eventData);
 
         // 2. Fetch Package & Dishes
         const [pkgRes, dishRes, invRes, quoteRes] = await Promise.all([
-          fetch('http://localhost:5000/api/packages', { headers }),
-          fetch('http://localhost:5000/api/dishes', { headers }),
-          fetch('http://localhost:5000/api/inventory', { headers }),
-          fetch('http://localhost:5000/api/quotations', { headers })
+          fetch(`${API_URL}/api/packages`, { headers }),
+          fetch(`${API_URL}/api/dishes`, { headers }),
+          fetch(`${API_URL}/api/inventory`, { headers }),
+          fetch(`${API_URL}/api/quotations`, { headers })
         ]);
 
         const packages = await pkgRes.json();
@@ -70,7 +71,7 @@ export default function EventDetails() {
 
     try {
       const token = await user.getIdToken();
-      await fetch(`http://localhost:5000/api/events/${id}/deduct-inventory`, {
+      await fetch(`${API_URL}/api/events/${id}/deduct-inventory`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ items: itemsToDeduct })
@@ -124,7 +125,7 @@ export default function EventDetails() {
     e.preventDefault();
     try {
       const token = await user.getIdToken();
-      await fetch(`http://localhost:5000/api/events/${id}/damage`, {
+      await fetch(`${API_URL}/api/events/${id}/damage`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ description: damageReport.description, cost: parseFloat(damageReport.cost) })
@@ -143,7 +144,7 @@ export default function EventDetails() {
     
     try {
       const token = await user.getIdToken();
-      await fetch(`http://localhost:5000/api/events/${id}/audit`, {
+      await fetch(`${API_URL}/api/events/${id}/audit`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ status })

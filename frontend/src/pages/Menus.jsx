@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function Menus() {
   const { user } = useAuth();
@@ -19,9 +20,9 @@ export default function Menus() {
         const headers = { 'Authorization': `Bearer ${token}` };
         
         const [dishRes, pkgRes, invRes] = await Promise.all([
-          fetch('http://localhost:5000/api/dishes', { headers }),
-          fetch('http://localhost:5000/api/packages', { headers }),
-          fetch('http://localhost:5000/api/inventory', { headers })
+          fetch(`${API_URL}/api/dishes`, { headers }),
+          fetch(`${API_URL}/api/packages`, { headers }),
+          fetch(`${API_URL}/api/inventory`, { headers })
         ]);
 
         if (dishRes.ok) setDishes(await dishRes.json());
@@ -81,11 +82,11 @@ export default function Menus() {
       const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
       
       if (currentDish.id) {
-        await fetch(`http://localhost:5000/api/dishes/${currentDish.id}`, {
+        await fetch(`${API_URL}/api/dishes/${currentDish.id}`, {
           method: 'PUT', headers, body: JSON.stringify(dishData)
         });
       } else {
-        await fetch('http://localhost:5000/api/dishes', {
+        await fetch(`${API_URL}/api/dishes`, {
           method: 'POST', headers, body: JSON.stringify(dishData)
         });
       }
@@ -136,7 +137,7 @@ export default function Menus() {
     e.preventDefault();
     try {
       const token = await user.getIdToken();
-      await fetch('http://localhost:5000/api/packages', {
+      await fetch(`${API_URL}/api/packages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(currentPkg)

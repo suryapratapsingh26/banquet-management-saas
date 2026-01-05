@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function StaffSchedule() {
   const { user } = useAuth();
@@ -16,9 +17,9 @@ export default function StaffSchedule() {
       const headers = { 'Authorization': `Bearer ${token}` };
       
       const [evRes, staffRes, assignRes] = await Promise.all([
-        fetch('http://localhost:5000/api/events', { headers }),
-        fetch('http://localhost:5000/api/users', { headers }),
-        fetch('http://localhost:5000/api/staff-assignments', { headers })
+        fetch(`${API_URL}/api/events`, { headers }),
+        fetch(`${API_URL}/api/users`, { headers }),
+        fetch(`${API_URL}/api/staff-assignments`, { headers })
       ]);
 
       if (evRes.ok) {
@@ -48,7 +49,7 @@ export default function StaffSchedule() {
     };
 
     const token = await user.getIdToken();
-    await fetch('http://localhost:5000/api/staff-assignments', {
+    await fetch(`${API_URL}/api/staff-assignments`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify(newAssignment)
     });
@@ -60,7 +61,7 @@ export default function StaffSchedule() {
   const handleRemove = async (id) => {
     try {
       const token = await user.getIdToken();
-      await fetch(`http://localhost:5000/api/staff-assignments/${id}`, {
+      await fetch(`${API_URL}/api/staff-assignments/${id}`, {
         method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
       });
       // Optimistic update
@@ -116,10 +117,10 @@ export default function StaffSchedule() {
             <tbody>
               {assignments.map(a => (
                 <tr key={a.id} className="border-b hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-gray-900">{a.eventTitle}</td>
-                  <td className="px-6 py-4">{a.eventDate}</td>
-                  <td className="px-6 py-4">{a.staffName}</td>
-                  <td className="px-6 py-4"><span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">{a.staffRole}</span></td>
+                  <td className="px-6 py-4 font-medium text-gray-900">{a.event_title}</td>
+                  <td className="px-6 py-4">{a.event_date ? a.event_date.split('T')[0] : ''}</td>
+                  <td className="px-6 py-4">{a.staff_name}</td>
+                  <td className="px-6 py-4"><span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">{a.staff_role}</span></td>
                   <td className="px-6 py-4 text-right">
                     <button onClick={() => handleRemove(a.id)} className="text-red-600 hover:underline">Remove</button>
                   </td>

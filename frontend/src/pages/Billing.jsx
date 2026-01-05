@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
+import { API_URL } from "../config";
 
 export default function Billing() {
   const { user } = useAuth();
@@ -15,7 +16,7 @@ export default function Billing() {
     if (!user) return;
     try {
       const token = await user.getIdToken();
-      const res = await fetch('http://localhost:5000/api/billing', {
+      const res = await fetch(`${API_URL}/api/billing`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) setEvents(await res.json());
@@ -26,7 +27,7 @@ export default function Billing() {
     e.preventDefault();
     try {
       const token = await user.getIdToken();
-      await fetch('http://localhost:5000/api/payments', {
+      await fetch(`${API_URL}/api/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({

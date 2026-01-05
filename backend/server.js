@@ -5,12 +5,17 @@ const admin = require('firebase-admin');
 
 // Initialize Firebase Admin (Ensure serviceAccountKey.json is in backend folder)
 try {
-  const serviceAccount = require('./serviceAccountKey.json');
+  let serviceAccount;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } else {
+    serviceAccount = require('./serviceAccountKey.json');
+  }
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
   });
 } catch (error) {
-  console.warn("Warning: Firebase Admin not initialized. Check serviceAccountKey.json");
+  console.warn("Warning: Firebase Admin not initialized. Check serviceAccountKey.json or FIREBASE_SERVICE_ACCOUNT env var.");
 }
 
 // Auth Middleware
@@ -20,6 +25,7 @@ const verifyToken = async (req, res, next) => {
   try {
     const decodedToken = await admin.auth().verifyIdToken(token);
     req.user = decodedToken;
+    // TODO: [SAAS-ARCH] Extract tenant_id from user custom claims here
     next();
   } catch (error) {
     return res.status(403).json({ message: "Invalid token" });
@@ -32,6 +38,7 @@ app.use(express.json());
 
 // --- LEADS ROUTES ---
 app.get('/api/leads', verifyToken, async (req, res) => {
+  // TODO: [SAAS-ARCH] Add WHERE tenant_id = $1 to enforce data isolation
   const result = await pool.query('SELECT * FROM leads ORDER BY id DESC');
   res.json(result.rows.map(l => ({
     id: l.id, client: l.client_name, type: l.event_type, date: l.event_date, status: l.status, budget: l.budget, contact: l.contact_number
@@ -40,11 +47,13 @@ app.get('/api/leads', verifyToken, async (req, res) => {
 
 // --- EVENTS ROUTES ---
 app.get('/api/events', verifyToken, async (req, res) => {
+  // TODO: [SAAS-ARCH] Add WHERE tenant_id = $1
   const result = await pool.query('SELECT * FROM events ORDER BY event_date ASC');
   res.json(result.rows.map(e => ({ ...e, date: new Date(e.event_date).toISOString().split('T')[0] })));
 });
 
 app.get('/api/events/:id', verifyToken, async (req, res) => {
+  // TODO: [SAAS-ARCH] Add WHERE id = $1 AND tenant_id = $2
   const { id } = req.params;
   const eventRes = await pool.query('SELECT * FROM events WHERE id = $1', [id]);
   if (eventRes.rows.length === 0) return res.status(404).json({ message: "Event not found" });
@@ -56,12 +65,14 @@ app.get('/api/events/:id', verifyToken, async (req, res) => {
 
 app.put('/api/events/:id/audit', verifyToken, async (req, res) => {
   const { status } = req.body;
+  // TODO: [SAAS-ARCH] Add AND tenant_id = $3
   await pool.query('UPDATE events SET audit_status = $1 WHERE id = $2', [status, req.params.id]);
   res.json({ message: "Audit updated" });
 });
 
 app.put('/api/events/:id/damage', verifyToken, async (req, res) => {
   const { description, cost } = req.body;
+  // TODO: [SAAS-ARCH] Add AND tenant_id = $4
   await pool.query('UPDATE events SET damage_description = $1, damage_cost = $2 WHERE id = $3', [description, cost, req.params.id]);
   res.json({ message: "Damage reported" });
 });
@@ -73,8 +84,10 @@ app.post('/api/events/:id/deduct-inventory', verifyToken, async (req, res) => {
     const { items } = req.body; // Array of { id, qtyToRemove }
     
     for (const item of items) {
+      // TODO: [SAAS-ARCH] Add AND tenant_id = $3
       await client.query('UPDATE inventory SET quantity = quantity - $1 WHERE id = $2', [item.qtyToRemove, item.id]);
     }
+    // TODO: [SAAS-ARCH] Add AND tenant_id = $3
     await client.query('UPDATE events SET inventory_deducted = TRUE, status = $1 WHERE id = $2', ['Completed', req.params.id]);
     await client.query('COMMIT');
     res.json({ message: "Inventory deducted" });
@@ -88,6 +101,7 @@ app.post('/api/events/:id/deduct-inventory', verifyToken, async (req, res) => {
 
 // --- INVENTORY ROUTES ---
 app.get('/api/inventory', verifyToken, async (req, res) => {
+  // TODO: [SAAS-ARCH] Add WHERE tenant_id = $1
   const result = await pool.query('SELECT * FROM inventory ORDER BY item_name ASC');
   res.json(result.rows.map(i => ({
     id: i.id, item: i.item_name, category: i.category, quantity: parseFloat(i.quantity), unit: i.unit, reorderLevel: parseFloat(i.reorder_level), unitPrice: parseFloat(i.unit_price),
@@ -97,18 +111,21 @@ app.get('/api/inventory', verifyToken, async (req, res) => {
 
 app.post('/api/inventory', verifyToken, async (req, res) => {
   const { item, category, quantity, unit, reorderLevel, unitPrice } = req.body;
+  // TODO: [SAAS-ARCH] Insert tenant_id
   await pool.query('INSERT INTO inventory (item_name, category, quantity, unit, reorder_level, unit_price) VALUES ($1, $2, $3, $4, $5, $6)', [item, category, quantity, unit, reorderLevel, unitPrice]);
   res.json({ message: "Item added" });
 });
 
 app.put('/api/inventory/:id', verifyToken, async (req, res) => {
   const { item, category, quantity, unit, reorderLevel, unitPrice } = req.body;
+  // TODO: [SAAS-ARCH] Add AND tenant_id = $8
   await pool.query('UPDATE inventory SET item_name=$1, category=$2, quantity=$3, unit=$4, reorder_level=$5, unit_price=$6 WHERE id=$7', [item, category, quantity, unit, reorderLevel, unitPrice, req.params.id]);
   res.json({ message: "Item updated" });
 });
 
 // --- VENDORS ROUTES ---
 app.get('/api/vendors', verifyToken, async (req, res) => {
+  // TODO: [SAAS-ARCH] Add WHERE tenant_id = $1
   const result = await pool.query('SELECT * FROM vendors');
   res.json(result.rows);
 });
@@ -116,6 +133,7 @@ app.get('/api/vendors', verifyToken, async (req, res) => {
 // --- DISHES ROUTES ---
 app.get('/api/dishes', verifyToken, async (req, res) => {
   const result = await pool.query('SELECT * FROM dishes ORDER BY name ASC');
+  // TODO: [SAAS-ARCH] Add WHERE tenant_id = $1
   res.json(result.rows.map(d => ({
     id: d.id, name: d.name, category: d.category, costPrice: parseFloat(d.cost_price), sellingPrice: parseFloat(d.selling_price), ingredients: d.ingredients || []
   })));
@@ -123,6 +141,7 @@ app.get('/api/dishes', verifyToken, async (req, res) => {
 
 app.post('/api/dishes', verifyToken, async (req, res) => {
   const { name, category, costPrice, sellingPrice, ingredients } = req.body;
+  // TODO: [SAAS-ARCH] Insert tenant_id
   const result = await pool.query(
     'INSERT INTO dishes (name, category, cost_price, selling_price, ingredients) VALUES ($1, $2, $3, $4, $5) RETURNING *',
     [name, category, costPrice, sellingPrice, JSON.stringify(ingredients)]
@@ -132,6 +151,7 @@ app.post('/api/dishes', verifyToken, async (req, res) => {
 
 app.put('/api/dishes/:id', verifyToken, async (req, res) => {
   const { name, category, costPrice, sellingPrice, ingredients } = req.body;
+  // TODO: [SAAS-ARCH] Add AND tenant_id = $7
   await pool.query(
     'UPDATE dishes SET name=$1, category=$2, cost_price=$3, selling_price=$4, ingredients=$5 WHERE id=$6',
     [name, category, costPrice, sellingPrice, JSON.stringify(ingredients), req.params.id]
@@ -142,6 +162,7 @@ app.put('/api/dishes/:id', verifyToken, async (req, res) => {
 // --- PACKAGES ROUTES ---
 app.get('/api/packages', verifyToken, async (req, res) => {
   const result = await pool.query('SELECT * FROM packages ORDER BY name ASC');
+  // TODO: [SAAS-ARCH] Add WHERE tenant_id = $1
   res.json(result.rows.map(p => ({
     id: p.id, name: p.name, type: p.type, pricePerPax: parseFloat(p.price_per_pax), selectedDishIds: p.selected_dish_ids || []
   })));
@@ -149,6 +170,7 @@ app.get('/api/packages', verifyToken, async (req, res) => {
 
 app.post('/api/packages', verifyToken, async (req, res) => {
   const { name, type, pricePerPax, selectedDishIds } = req.body;
+  // TODO: [SAAS-ARCH] Insert tenant_id
   const result = await pool.query(
     'INSERT INTO packages (name, type, price_per_pax, selected_dish_ids) VALUES ($1, $2, $3, $4) RETURNING *',
     [name, type, pricePerPax, JSON.stringify(selectedDishIds)]
@@ -158,6 +180,7 @@ app.post('/api/packages', verifyToken, async (req, res) => {
 
 // --- QUOTATIONS ROUTES ---
 app.get('/api/quotations', verifyToken, async (req, res) => {
+  // TODO: [SAAS-ARCH] Add WHERE tenant_id = $1
   const result = await pool.query('SELECT * FROM quotations ORDER BY id DESC');
   res.json(result.rows.map(q => ({
     id: q.id, 
@@ -171,6 +194,7 @@ app.get('/api/quotations', verifyToken, async (req, res) => {
 
 app.post('/api/quotations', verifyToken, async (req, res) => {
   const { leadId, leadName, leadPhone, packageId, packageName, hallId, hallName, eventDate, pax, pricePerPax, totalAmount } = req.body;
+  // TODO: [SAAS-ARCH] Insert tenant_id
   const result = await pool.query(
     'INSERT INTO quotations (lead_id, lead_name, lead_phone, package_id, package_name, hall_id, hall_name, event_date, pax, price_per_pax, total_amount) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *',
     [leadId, leadName, leadPhone, packageId, packageName, hallId, hallName, eventDate, pax, pricePerPax, totalAmount]
@@ -182,13 +206,16 @@ app.put('/api/quotations/:id/confirm', verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // TODO: [SAAS-ARCH] Add AND tenant_id = $2
     const q = (await client.query('SELECT * FROM quotations WHERE id = $1', [req.params.id])).rows[0];
     
     // Update Quote Status
+    // TODO: [SAAS-ARCH] Add AND tenant_id = $3
     await client.query('UPDATE quotations SET status = $1 WHERE id = $2', ['Confirmed', req.params.id]);
     
     // Create Event
     await client.query(
+      // TODO: [SAAS-ARCH] Insert tenant_id
       'INSERT INTO events (title, event_date, pax, status, quote_id, package_id) VALUES ($1, $2, $3, $4, $5, $6)',
       [`${q.lead_name} - ${q.package_name}`, q.event_date, q.pax, 'Upcoming', q.id, q.package_id]
     );
@@ -206,6 +233,7 @@ app.put('/api/quotations/:id/confirm', verifyToken, async (req, res) => {
 // --- BILLING ROUTES ---
 app.get('/api/billing', verifyToken, async (req, res) => {
   // Fetch events with their total amounts (from quotes) and paid amounts (from payments)
+  // TODO: [SAAS-ARCH] Add WHERE e.tenant_id = $1
   const query = `
     SELECT e.id, e.title, e.event_date, e.damage_cost, q.total_amount, 
            COALESCE(SUM(p.amount), 0) as paid_amount
@@ -225,6 +253,7 @@ app.get('/api/billing', verifyToken, async (req, res) => {
 
 app.post('/api/payments', verifyToken, async (req, res) => {
   const { eventId, amount, mode } = req.body;
+  // TODO: [SAAS-ARCH] Insert tenant_id
   await pool.query('INSERT INTO payments (event_id, amount, mode, payment_date) VALUES ($1, $2, $3, CURRENT_DATE)', [eventId, amount, mode]);
   res.json({ message: "Payment recorded" });
 });
@@ -232,29 +261,41 @@ app.post('/api/payments', verifyToken, async (req, res) => {
 // --- USERS ROUTES ---
 app.get('/api/users', verifyToken, async (req, res) => {
   const result = await pool.query('SELECT id, name, email, phone, role, status FROM users');
+  // TODO: [SAAS-ARCH] Add WHERE tenant_id = $1
   res.json(result.rows);
 });
 
 app.post('/api/users', verifyToken, async (req, res) => {
   const { name, email, phone, role, password } = req.body;
   // In production, hash password here
+  // TODO: [SAAS-ARCH] Insert tenant_id
   await pool.query('INSERT INTO users (name, email, phone, role, password) VALUES ($1, $2, $3, $4, $5)', [name, email, phone, role, password]);
   res.json({ message: "User created" });
 });
 
 app.delete('/api/users/:id', verifyToken, async (req, res) => {
+  // TODO: [SAAS-ARCH] Add AND tenant_id = $2
   await pool.query('DELETE FROM users WHERE id = $1', [req.params.id]);
   res.json({ message: "User deleted" });
 });
 
+// --- SUBSCRIPTION & MONETIZATION ROUTES (TODO: Phase 2) ---
+// app.get('/api/subscription/plans', ...);
+// app.post('/api/subscription/subscribe', ...);
+// app.get('/api/subscription/invoice', ...);
+// Middleware: checkSubscriptionStatus(req, res, next);
+
+
 // --- GENERIC CRUD HANDLERS FOR MASTERS ---
 const createCrudRoutes = (table, path) => {
   app.get(`/api/${path}`, verifyToken, async (req, res) => {
+    // TODO: [SAAS-ARCH] Add WHERE tenant_id = $1 to enforce data isolation
     const result = await pool.query(`SELECT * FROM ${table} ORDER BY id ASC`);
     res.json(result.rows);
   });
   
   app.post(`/api/${path}`, verifyToken, async (req, res) => {
+    // TODO: [SAAS-ARCH] Include tenant_id in INSERT statement
     const keys = Object.keys(req.body);
     const values = Object.values(req.body);
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(',');
@@ -263,6 +304,7 @@ const createCrudRoutes = (table, path) => {
   });
 
   app.put(`/api/${path}/:id`, verifyToken, async (req, res) => {
+    // TODO: [SAAS-ARCH] Ensure WHERE id = $1 AND tenant_id = $2
     const keys = Object.keys(req.body);
     const values = Object.values(req.body);
     const setClause = keys.map((k, i) => `${k} = $${i + 1}`).join(',');
@@ -292,6 +334,7 @@ createCrudRoutes('staff_assignments', 'staff-assignments');
 // --- REPORTS & ANALYTICS ---
 app.get('/api/reports/stats', verifyToken, async (req, res) => {
   try {
+    // TODO: [SAAS-ARCH] Add WHERE tenant_id = $1 to all queries below
     // Revenue Stats
     const revenueQuery = `
       SELECT 
@@ -351,6 +394,7 @@ app.get('/api/reports/stats', verifyToken, async (req, res) => {
 // --- SETTINGS ---
 app.post('/api/settings/reset', verifyToken, async (req, res) => {
   // Dangerous: Only for demo/dev
+  // TODO: [SAAS-ARCH] Only truncate data for current tenant_id
   await pool.query('TRUNCATE TABLE events, quotations, leads, tasks, payments, staff_assignments RESTART IDENTITY CASCADE');
   res.json({ message: "System reset successful" });
 });

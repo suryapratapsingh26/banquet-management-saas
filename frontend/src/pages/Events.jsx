@@ -1,22 +1,39 @@
 import { useState, useEffect } from "react";
-import AdminLayout from "../layouts/AdminLayout";
 import { Link } from "react-router-dom";
+import { useAuth } from "../components/AuthContext";
 
 export default function Events() {
+  const { user } = useAuth();
   const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedEvents = JSON.parse(localStorage.getItem("events")) || [];
-    setEvents(savedEvents);
-  }, []);
+    const fetchEvents = async () => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch('http://localhost:5000/api/events', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        setEvents(data);
+      } catch (error) {
+        console.error("Error fetching events:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvents();
+  }, [user]);
 
   return (
-    <AdminLayout>
+    <>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Event Operations</h1>
         <p className="text-gray-500 text-sm">Manage upcoming events and function sheets.</p>
       </div>
 
+      {loading ? <div className="text-center p-10">Loading Events...</div> : (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="w-full text-sm text-left text-gray-500">
           <thead className="text-xs text-gray-700 uppercase bg-gray-50">
@@ -42,6 +59,7 @@ export default function Events() {
           </tbody>
         </table>
       </div>
-    </AdminLayout>
+      )}
+    </>
   );
 }

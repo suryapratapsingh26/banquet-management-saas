@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import AdminLayout from "../layouts/AdminLayout";
 import { useAuth } from "../components/AuthContext";
 
 export default function Inventory() {
@@ -8,32 +7,44 @@ export default function Inventory() {
   const [activeTab, setActiveTab] = useState("stock");
 
   // 1. Dynamic Stock State
-  const [stockItems, setStockItems] = useState(() => {
-    const saved = localStorage.getItem("inventory");
-    return saved ? JSON.parse(saved) : [
-      { id: 1, item: "Basmati Rice", category: "Grains", quantity: 50, unit: "kg", reorderLevel: 10, status: "Good", unitPrice: 90 },
-      { id: 2, item: "Cooking Oil", category: "Essentials", quantity: 12, unit: "L", reorderLevel: 20, status: "Low", unitPrice: 140 },
-      { id: 3, item: "Paneer", category: "Dairy", quantity: 5, unit: "kg", reorderLevel: 5, status: "Critical", unitPrice: 420 },
-    ];
-  });
-
-  // 2. Fetch Real Vendors from LocalStorage (Integration)
+  const [stockItems, setStockItems] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedVendors = JSON.parse(localStorage.getItem("vendors")) || [];
-    setVendors(savedVendors);
-  }, []);
+    const fetchData = async () => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const headers = { 'Authorization': `Bearer ${token}` };
+        
+        const [invRes, vendRes] = await Promise.all([
+          fetch('http://localhost:5000/api/inventory', { headers }),
+          fetch('http://localhost:5000/api/vendors', { headers })
+        ]);
 
-  useEffect(() => {
-    localStorage.setItem("inventory", JSON.stringify(stockItems));
-  }, [stockItems]);
+        if (invRes.ok) {
+          const invData = await invRes.json();
+          setStockItems(invData);
+        }
+        if (vendRes.ok) {
+          const vendData = await vendRes.json();
+          setVendors(vendData);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [user]);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentItem, setCurrentItem] = useState({ item: "", category: "Grains", quantity: "", unit: "kg", reorderLevel: "", unitPrice: "" });
 
-  const handleSaveItem = (e) => {
+  const handleSaveItem = async (e) => {
     e.preventDefault();
     const qty = parseFloat(currentItem.quantity);
     const reorder = parseFloat(currentItem.reorderLevel);
@@ -46,16 +57,39 @@ export default function Inventory() {
 
     const newItem = { ...currentItem, quantity: qty, reorderLevel: reorder, unitPrice: price, status };
 
-    if (currentItem.id) {
-      setStockItems(stockItems.map(i => i.id === currentItem.id ? { ...newItem, id: currentItem.id } : i));
-    } else {
-      setStockItems([...stockItems, { ...newItem, id: Date.now() }]);
+    try {
+      const token = await user.getIdToken();
+      const headers = { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` 
+      };
+
+      if (currentItem.id) {
+        // Update existing item
+        await fetch(`http://localhost:5000/api/inventory/${currentItem.id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(newItem)
+        });
+      } else {
+        // Create new item
+        await fetch('http://localhost:5000/api/inventory', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(newItem)
+        });
+      }
+      
+      // Refresh data (Optimistic update can be added for speed)
+      window.location.reload(); 
+    } catch (error) {
+      console.error("Error saving item:", error);
+      alert("Failed to save item to database.");
     }
-    setIsModalOpen(false);
   };
 
   return (
-    <AdminLayout>
+    <>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Inventory & Store</h1>
@@ -87,6 +121,7 @@ export default function Inventory() {
       </div>
 
       {/* Content */}
+      {loading ? <div className="text-center p-10">Loading Inventory...</div> : (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="w-full text-sm text-left text-gray-500">
           <thead className="text-xs text-gray-700 uppercase bg-gray-50">
@@ -126,6 +161,7 @@ export default function Inventory() {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Add/Edit Stock Modal */}
       {isModalOpen && (
@@ -174,6 +210,6 @@ export default function Inventory() {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }

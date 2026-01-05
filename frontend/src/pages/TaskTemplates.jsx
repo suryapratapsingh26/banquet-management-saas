@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import AdminLayout from "../layouts/AdminLayout";
 
 export default function TaskTemplates() {
   const [templates, setTemplates] = useState([]);
@@ -31,7 +30,7 @@ export default function TaskTemplates() {
   };
 
   return (
-    <AdminLayout>
+    <>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Task Templates</h1>
@@ -91,6 +90,6 @@ export default function TaskTemplates() {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }

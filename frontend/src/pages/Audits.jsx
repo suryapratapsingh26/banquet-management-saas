@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import AdminLayout from "../layouts/AdminLayout";
 import { Link } from "react-router-dom";
 
 export default function Audits() {
@@ -19,7 +18,7 @@ export default function Audits() {
   };
 
   return (
-    <AdminLayout>
+    <>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Audit & Compliance</h1>
         <p className="text-gray-500 text-sm">Ensure quality standards before events go live.</p>
@@ -50,6 +49,6 @@ export default function Audits() {
           </tbody>
         </table>
       </div>
-    </AdminLayout>
+    </>
   );
 }

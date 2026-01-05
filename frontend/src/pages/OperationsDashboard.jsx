@@ -1,12 +1,11 @@
 import React from "react";
-import AdminLayout from "../layouts/AdminLayout";
 import { useNavigate } from "react-router-dom";
 
 export default function OperationsDashboard() {
   const navigate = useNavigate();
 
   return (
-    <AdminLayout>
+    <>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Operations Dashboard</h1>
         <p className="text-gray-500 text-sm">Event execution and task management center.</p>
@@ -46,6 +45,6 @@ export default function OperationsDashboard() {
           </div>
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 }

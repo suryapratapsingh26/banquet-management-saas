@@ -1,39 +1,45 @@
 import { useState, useEffect } from "react";
-import AdminLayout from "../layouts/AdminLayout";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../components/AuthContext";
 
 export default function Quotations() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [quotations, setQuotations] = useState([]);
   const [packages, setPackages] = useState([]);
   const [leads, setLeads] = useState([]);
-  const [halls, setHalls] = useState([
-    { id: 1, name: "Grand Ballroom (Capacity: 500)" },
-    { id: 2, name: "Royal Hall (Capacity: 200)" },
-    { id: 3, name: "Garden Lawn (Capacity: 1000)" }
-  ]);
+  const [halls, setHalls] = useState([]);
 
   // Load Data
   useEffect(() => {
-    setQuotations(JSON.parse(localStorage.getItem("quotations")) || []);
-    setPackages(JSON.parse(localStorage.getItem("packages")) || []);
-    // Fallback mock leads if none exist in local storage
-    const savedLeads = JSON.parse(localStorage.getItem("leads")) || [
-      { id: 1, name: "Rahul Kapoor", phone: "9876543210" },
-      { id: 2, name: "Priya Sharma", phone: "9123456789" }
-    ];
-    setLeads(savedLeads);
-  }, []);
+    const fetchData = async () => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const headers = { 'Authorization': `Bearer ${token}` };
+        
+        const [qRes, pRes, lRes, hRes] = await Promise.all([
+          fetch('http://localhost:5000/api/quotations', { headers }),
+          fetch('http://localhost:5000/api/packages', { headers }),
+          fetch('http://localhost:5000/api/leads', { headers }),
+          fetch('http://localhost:5000/api/banquet-halls', { headers })
+        ]);
 
-  // Save Data
-  useEffect(() => {
-    localStorage.setItem("quotations", JSON.stringify(quotations));
-  }, [quotations]);
+        if (qRes.ok) setQuotations(await qRes.json());
+        if (pRes.ok) setPackages(await pRes.json());
+        if (lRes.ok) setLeads(await lRes.json());
+        if (hRes.ok) setHalls(await hRes.json());
+      } catch (error) {
+        console.error("Error fetching quotation data:", error);
+      }
+    };
+    fetchData();
+  }, [user]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newQuote, setNewQuote] = useState({ leadId: "", packageId: "", hallId: "", eventDate: "", pax: "" });
 
-  const handleCreate = (e) => {
+  const handleCreate = async (e) => {
     e.preventDefault();
     const selectedPkg = packages.find(p => p.id === parseInt(newQuote.packageId));
     const selectedLead = leads.find(l => l.id === parseInt(newQuote.leadId));
@@ -44,9 +50,8 @@ export default function Quotations() {
     const totalAmount = parseFloat(selectedPkg.pricePerPax) * parseInt(newQuote.pax);
 
     const quote = {
-      id: Date.now(),
-      leadName: selectedLead.name,
-      leadPhone: selectedLead.phone,
+      leadName: selectedLead.client || selectedLead.name,
+      leadPhone: selectedLead.contact || selectedLead.phone,
       leadId: selectedLead.id,
       packageName: selectedPkg.name,
       hallName: selectedHall ? selectedHall.name : "Not Assigned",
@@ -56,66 +61,48 @@ export default function Quotations() {
       pax: newQuote.pax,
       pricePerPax: selectedPkg.pricePerPax,
       totalAmount: totalAmount,
-      status: "Draft",
-      createdAt: new Date().toISOString().split('T')[0]
     };
 
-    setQuotations([quote, ...quotations]);
-    setIsModalOpen(false);
-    setNewQuote({ leadId: "", packageId: "", hallId: "", eventDate: "", pax: "" });
+    try {
+      const token = await user.getIdToken();
+      await fetch('http://localhost:5000/api/quotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(quote)
+      });
+      
+      // Refresh list
+      const res = await fetch('http://localhost:5000/api/quotations', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setQuotations(await res.json());
+      
+      setIsModalOpen(false);
+      setNewQuote({ leadId: "", packageId: "", hallId: "", eventDate: "", pax: "" });
+    } catch (error) {
+      console.error("Error creating quotation:", error);
+    }
   };
 
-  const handleConfirm = (quote) => {
+  const handleConfirm = async (quote) => {
     if (!window.confirm("Are you sure you want to confirm this booking? This will create an Event.")) return;
 
-    // 1. Conflict Check (Module 7)
-    const events = JSON.parse(localStorage.getItem("events")) || [];
-    const conflict = events.find(e => e.date === quote.eventDate && e.hallId === quote.hallId && e.status !== "Cancelled");
-    
-    if (conflict) {
-      alert(`❌ Conflict Detected!\n\nThe hall "${quote.hallName}" is already booked on ${quote.eventDate} for event: "${conflict.title}".\n\nPlease change the date or hall.`);
-      return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`http://localhost:5000/api/quotations/${quote.id}/confirm`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        alert("✅ Quotation Confirmed and Event Created!");
+        navigate("/events");
+      } else {
+        alert("Failed to confirm quotation.");
+      }
+    } catch (error) {
+      console.error("Error confirming quotation:", error);
     }
-
-    // 2. Update Quote Status
-    const updatedQuotes = quotations.map(q => q.id === quote.id ? { ...q, status: "Confirmed" } : q);
-    setQuotations(updatedQuotes);
-
-    // 3. Create Event Entry
-    const newEvent = {
-      id: Date.now(),
-      quoteId: quote.id,
-      title: `${quote.leadName} - ${quote.packageName}`,
-      date: quote.eventDate,
-      pax: quote.pax,
-      hallId: quote.hallId,
-      packageId: quote.packageId,
-      status: "Upcoming"
-    };
-    localStorage.setItem("events", JSON.stringify([...events, newEvent]));
-
-    // 4. Auto-Generate Tasks from Templates (Module 4)
-    const templates = JSON.parse(localStorage.getItem("taskTemplates")) || [];
-    // Find package type to match template
-    const pkg = packages.find(p => p.id === quote.packageId);
-    const eventType = pkg ? pkg.type : "Wedding"; // Default to Wedding if not found
-
-    const relevantTemplates = templates.filter(t => t.eventType === eventType);
-    
-    const newTasks = relevantTemplates.map(t => ({
-      id: Date.now() + Math.random(),
-      eventId: newEvent.id,
-      eventTitle: newEvent.title,
-      eventDate: newEvent.date,
-      description: t.taskName,
-      assignedRole: t.assignedRole,
-      status: "Pending"
-    }));
-
-    const existingTasks = JSON.parse(localStorage.getItem("tasks")) || [];
-    localStorage.setItem("tasks", JSON.stringify([...existingTasks, ...newTasks]));
-
-    navigate("/events");
   };
 
   const handlePrint = (quote) => {
@@ -171,7 +158,7 @@ export default function Quotations() {
   };
 
   return (
-    <AdminLayout>
+    <>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Quotations</h1>
@@ -212,7 +199,7 @@ export default function Quotations() {
           <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
             <h2 className="text-xl font-bold text-gray-800 mb-4">New Quotation</h2>
             <form onSubmit={handleCreate} className="space-y-4">
-              <div><label className="block text-sm font-medium text-gray-700">Select Client</label><select required className="w-full mt-1 p-2 border rounded" value={newQuote.leadId} onChange={e => setNewQuote({...newQuote, leadId: e.target.value})}><option value="">-- Select Lead --</option>{leads.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-gray-700">Select Client</label><select required className="w-full mt-1 p-2 border rounded" value={newQuote.leadId} onChange={e => setNewQuote({...newQuote, leadId: e.target.value})}><option value="">-- Select Lead --</option>{leads.map(l => <option key={l.id} value={l.id}>{l.client || l.name}</option>)}</select></div>
               <div><label className="block text-sm font-medium text-gray-700">Select Package</label><select required className="w-full mt-1 p-2 border rounded" value={newQuote.packageId} onChange={e => setNewQuote({...newQuote, packageId: e.target.value})}><option value="">-- Select Package --</option>{packages.map(p => <option key={p.id} value={p.id}>{p.name} (₹{p.pricePerPax}/pax)</option>)}</select></div>
               <div><label className="block text-sm font-medium text-gray-700">Select Venue</label><select required className="w-full mt-1 p-2 border rounded" value={newQuote.hallId} onChange={e => setNewQuote({...newQuote, hallId: e.target.value})}><option value="">-- Select Hall --</option>{halls.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}</select></div>
               <div><label className="block text-sm font-medium text-gray-700">Event Date</label><input type="date" required className="w-full mt-1 p-2 border rounded" value={newQuote.eventDate} onChange={e => setNewQuote({...newQuote, eventDate: e.target.value})} /></div>
@@ -222,6 +209,6 @@ export default function Quotations() {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }

@@ -1,18 +1,24 @@
 import { useState, useEffect } from "react";
-import AdminLayout from "../layouts/AdminLayout";
+import { useAuth } from "../components/AuthContext";
 
 export default function Users() {
-  const [users, setUsers] = useState(() => {
-    const saved = localStorage.getItem("users");
-    return saved ? JSON.parse(saved) : [
-      { id: 1, name: "Rahul Verma", email: "rahul@grandbanquet.com", phone: "9876543210", role: "Banquet Manager", status: "Active" },
-      { id: 2, name: "Amit Singh", email: "amit@grandbanquet.com", phone: "9123456789", role: "Sales Manager", status: "Active" },
-    ];
-  });
+  const { user } = useAuth();
+  const [users, setUsers] = useState([]);
 
   useEffect(() => {
-    localStorage.setItem("users", JSON.stringify(users));
-  }, [users]);
+    fetchUsers();
+  }, [user]);
+
+  const fetchUsers = async () => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('http://localhost:5000/api/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setUsers(await res.json());
+    } catch (error) { console.error(error); }
+  };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newUser, setNewUser] = useState({ name: "", email: "", role: "Sales Manager", phone: "", password: "" });
@@ -31,22 +37,36 @@ export default function Users() {
     "HR Manager"
   ];
 
-  const handleAddUser = (e) => {
+  const handleAddUser = async (e) => {
     e.preventDefault();
-    setUsers([...users, { ...newUser, id: Date.now(), status: "Active" }]);
-    setIsModalOpen(false);
-    setNewUser({ name: "", email: "", role: "Sales Manager", phone: "", password: "" });
-    alert("User created! They can now login with their email and password.");
+    try {
+      const token = await user.getIdToken();
+      await fetch('http://localhost:5000/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(newUser)
+      });
+      fetchUsers();
+      setIsModalOpen(false);
+      setNewUser({ name: "", email: "", role: "Sales Manager", phone: "", password: "" });
+      alert("User created!");
+    } catch (error) { console.error(error); }
   };
 
-  const handleRemoveUser = (id) => {
+  const handleRemoveUser = async (id) => {
     if (window.confirm("Are you sure you want to remove this user?")) {
-      setUsers(users.filter(user => user.id !== id));
+      try {
+        const token = await user.getIdToken();
+        await fetch(`http://localhost:5000/api/users/${id}`, {
+          method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+        });
+        fetchUsers();
+      } catch (error) { console.error(error); }
     }
   };
 
   return (
-    <AdminLayout>
+    <>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
@@ -123,6 +143,6 @@ export default function Users() {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }

@@ -1,148 +1,138 @@
 import { useState, useEffect } from "react";
-import AdminLayout from "../layouts/AdminLayout";
 import { useAuth } from "../components/AuthContext";
 
 export default function Vendors() {
   const { user } = useAuth();
-  const canEdit = ['admin', 'Owner', 'Event Operations Manager', 'Inventory Manager'].includes(user?.role);
-
-  // Mock Data - In real app, fetch from API
-  const [vendors, setVendors] = useState(() => {
-    const saved = localStorage.getItem("vendors");
-    return saved ? JSON.parse(saved) : [
-      { id: 1, name: "Fresh Blooms Florist", category: "Decorator", contact: "9876543210", email: "blooms@example.com", status: "Active" },
-      { id: 2, name: "DJ Rockerz", category: "Entertainment", contact: "9123456789", email: "dj@example.com", status: "Active" },
-      { id: 3, name: "SafeGuard Security", category: "Security", contact: "8888888888", email: "security@example.com", status: "Inactive" },
-    ];
-  });
-
+  const [vendors, setVendors] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentVendor, setCurrentVendor] = useState({ name: "", category: "Decorator", contact: "", email: "", status: "Active" });
+  const [currentRating, setCurrentRating] = useState({ vendorId: "", score: 5, comment: "" });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem("vendors", JSON.stringify(vendors));
-  }, [vendors]);
+    const fetchVendors = async () => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch('http://localhost:5000/api/vendors', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        setVendors(data);
+      } catch (error) {
+        console.error("Error fetching vendors:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchVendors();
+  }, [user]);
 
-  const handleSave = (e) => {
+  const handleRate = async (e) => {
     e.preventDefault();
-    if (currentVendor.id) {
-      setVendors(vendors.map(v => v.id === currentVendor.id ? currentVendor : v));
-    } else {
-      setVendors([...vendors, { ...currentVendor, id: Date.now() }]);
+    try {
+      const token = await user.getIdToken();
+      await fetch(`http://localhost:5000/api/vendors/${currentRating.vendorId}/rate`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ score: currentRating.score })
+      });
+      
+      // Refresh list
+      const response = await fetch('http://localhost:5000/api/vendors', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setVendors(data);
+      
+      setIsModalOpen(false);
+      alert("Vendor rating submitted successfully!");
+    } catch (error) {
+      console.error("Error rating vendor:", error);
     }
-    setIsModalOpen(false);
   };
 
-  const handleEdit = (vendor) => {
-    setCurrentVendor(vendor);
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to remove this vendor?")) {
-      setVendors(vendors.filter(v => v.id !== id));
-    }
+  const getRatingColor = (rating) => {
+    if (rating >= 4.5) return "text-green-600";
+    if (rating >= 3.5) return "text-yellow-600";
+    return "text-red-600";
   };
 
   return (
-    <AdminLayout>
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Vendor Management</h1>
-          <p className="text-gray-500 text-sm">Manage external partners, decorators, and service providers.</p>
-        </div>
-        {canEdit && (
-          <button 
-            onClick={() => { setCurrentVendor({ name: "", category: "Decorator", contact: "", email: "", status: "Active" }); setIsModalOpen(true); }} 
-            className="bg-pink-600 text-white px-4 py-2 rounded-lg shadow hover:bg-pink-700 transition cursor-pointer"
-          >
-            + Add Vendor
-          </button>
-        )}
+    <>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Vendor Management</h1>
+        <p className="text-gray-500 text-sm">Manage vendor partners and track performance.</p>
       </div>
 
+      {loading ? <div className="text-center p-10">Loading Vendors...</div> : (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="w-full text-sm text-left text-gray-500">
           <thead className="text-xs text-gray-700 uppercase bg-gray-50">
             <tr>
               <th className="px-6 py-3">Vendor Name</th>
               <th className="px-6 py-3">Category</th>
-              <th className="px-6 py-3">Contact Info</th>
-              <th className="px-6 py-3">Status</th>
-              {canEdit && <th className="px-6 py-3 text-right">Actions</th>}
+              <th className="px-6 py-3">Contact</th>
+              <th className="px-6 py-3">Performance Score</th>
+              <th className="px-6 py-3 text-right">Action</th>
             </tr>
           </thead>
           <tbody>
-            {vendors.map((vendor) => (
-              <tr key={vendor.id} className="border-b hover:bg-gray-50">
-                <td className="px-6 py-4 font-medium text-gray-900">{vendor.name}</td>
-                <td className="px-6 py-4"><span className="bg-gray-100 px-2 py-1 rounded text-xs">{vendor.category}</span></td>
+            {vendors.map(v => (
+              <tr key={v.id} className="border-b hover:bg-gray-50">
+                <td className="px-6 py-4 font-medium text-gray-900">{v.name}</td>
+                <td className="px-6 py-4">{v.category}</td>
+                <td className="px-6 py-4">{v.contact}</td>
                 <td className="px-6 py-4">
-                  <div className="text-gray-900">{vendor.contact}</div>
-                  <div className="text-xs text-gray-400">{vendor.email}</div>
+                  <div className="flex items-center">
+                    <span className={`text-lg font-bold mr-2 ${getRatingColor(v.rating)}`}>{v.rating || "N/A"}</span>
+                    <span className="text-xs text-gray-400">({v.reviews || 0} reviews)</span>
+                  </div>
                 </td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 rounded text-xs font-bold ${vendor.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {vendor.status}
-                  </span>
+                <td className="px-6 py-4 text-right">
+                  <button 
+                    onClick={() => { setCurrentRating({ vendorId: v.id, score: 5, comment: "" }); setIsModalOpen(true); }}
+                    className="text-pink-600 hover:underline font-medium"
+                  >
+                    Rate Performance
+                  </button>
                 </td>
-                {canEdit && (
-                  <td className="px-6 py-4 text-right space-x-2">
-                    <button onClick={() => handleEdit(vendor)} className="text-blue-600 hover:underline text-xs font-medium cursor-pointer">Edit</button>
-                    <button onClick={() => handleDelete(vendor.id)} className="text-red-600 hover:underline text-xs font-medium cursor-pointer">Remove</button>
-                  </td>
-                )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">{currentVendor.id ? 'Edit Vendor' : 'Add New Vendor'}</h2>
-            <form onSubmit={handleSave} className="space-y-4">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Rate Vendor Performance</h2>
+            <form onSubmit={handleRate} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Vendor Name</label>
-                <input type="text" required className="w-full mt-1 p-2 border rounded" value={currentVendor.name} onChange={e => setCurrentVendor({...currentVendor, name: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Category</label>
-                <select className="w-full mt-1 p-2 border rounded" value={currentVendor.category} onChange={e => setCurrentVendor({...currentVendor, category: e.target.value})}>
-                  <option>Decorator</option>
-                  <option>Entertainment</option>
-                  <option>Catering</option>
-                  <option>Security</option>
-                  <option>Logistics</option>
-                  <option>Photography</option>
+                <label className="block text-sm font-medium text-gray-700">Score (1-5)</label>
+                <select className="w-full mt-1 p-2 border rounded" value={currentRating.score} onChange={e => setCurrentRating({...currentRating, score: e.target.value})}>
+                  <option value="5">5 - Excellent</option>
+                  <option value="4">4 - Good</option>
+                  <option value="3">3 - Average</option>
+                  <option value="2">2 - Poor</option>
+                  <option value="1">1 - Terrible</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Phone</label>
-                  <input type="text" required className="w-full mt-1 p-2 border rounded" value={currentVendor.contact} onChange={e => setCurrentVendor({...currentVendor, contact: e.target.value})} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <select className="w-full mt-1 p-2 border rounded" value={currentVendor.status} onChange={e => setCurrentVendor({...currentVendor, status: e.target.value})}>
-                    <option>Active</option>
-                    <option>Inactive</option>
-                  </select>
-                </div>
-              </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input type="email" required className="w-full mt-1 p-2 border rounded" value={currentVendor.email} onChange={e => setCurrentVendor({...currentVendor, email: e.target.value})} />
+                <label className="block text-sm font-medium text-gray-700">Comments</label>
+                <textarea className="w-full mt-1 p-2 border rounded" rows="3" value={currentRating.comment} onChange={e => setCurrentRating({...currentRating, comment: e.target.value})} placeholder="e.g. Delivered on time, good quality..."></textarea>
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded cursor-pointer">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-pink-600 text-white rounded cursor-pointer">Save Vendor</button>
+                <button type="submit" className="px-4 py-2 bg-pink-600 text-white rounded cursor-pointer">Submit Rating</button>
               </div>
             </form>
           </div>
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }

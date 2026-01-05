@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import AdminLayout from "../layouts/AdminLayout";
 import { useAuth } from "../components/AuthContext";
 
 export default function BanquetHalls() {
@@ -7,30 +6,39 @@ export default function BanquetHalls() {
   const canEdit = ['admin', 'Owner', 'Property Admin'].includes(user?.role);
 
   // Mock Data - In real app, fetch from API
-  const [halls, setHalls] = useState(() => {
-    const saved = localStorage.getItem("banquetHalls");
-    return saved ? JSON.parse(saved) : [
-      { id: 1, name: "Emerald Hall", type: "Indoor", capacity: "500", rate: "50000" },
-      { id: 2, name: "Sapphire Lawn", type: "Outdoor", capacity: "1000", rate: "80000" },
-      { id: 3, name: "Boardroom A", type: "Conference", capacity: "50", rate: "15000" },
-    ];
-  });
+  const [halls, setHalls] = useState([]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentHall, setCurrentHall] = useState({ name: "", type: "Indoor", capacity: "", rate: "" });
 
   useEffect(() => {
-    localStorage.setItem("banquetHalls", JSON.stringify(halls));
-  }, [halls]);
+    fetchHalls();
+  }, [user]);
 
-  const handleSave = (e) => {
+  const fetchHalls = async () => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('http://localhost:5000/api/banquet-halls', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) setHalls(await res.json());
+    } catch (error) { console.error(error); }
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (currentHall.id) {
-      setHalls(halls.map(h => h.id === currentHall.id ? currentHall : h));
-    } else {
-      setHalls([...halls, { ...currentHall, id: Date.now() }]);
-    }
-    setIsModalOpen(false);
+    try {
+      const token = await user.getIdToken();
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+      if (currentHall.id) {
+        await fetch(`http://localhost:5000/api/banquet-halls/${currentHall.id}`, { method: 'PUT', headers, body: JSON.stringify(currentHall) });
+      } else {
+        await fetch('http://localhost:5000/api/banquet-halls', { method: 'POST', headers, body: JSON.stringify(currentHall) });
+      }
+      fetchHalls();
+      setIsModalOpen(false);
+    } catch (error) { console.error(error); }
   };
 
   const handleEdit = (hall) => {
@@ -38,14 +46,18 @@ export default function BanquetHalls() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this venue?")) {
-      setHalls(halls.filter(h => h.id !== id));
+      try {
+        const token = await user.getIdToken();
+        await fetch(`http://localhost:5000/api/banquet-halls/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        fetchHalls();
+      } catch (error) { console.error(error); }
     }
   };
 
   return (
-    <AdminLayout>
+    <>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Banquet Halls & Venues</h1>
@@ -125,6 +137,6 @@ export default function BanquetHalls() {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }

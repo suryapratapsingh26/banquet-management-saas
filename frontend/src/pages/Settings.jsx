@@ -1,5 +1,4 @@
 import { useState } from "react";
-import AdminLayout from "../layouts/AdminLayout";
 import { useAuth } from "../components/AuthContext";
 
 export default function Settings() {
@@ -7,13 +6,12 @@ export default function Settings() {
   const [companyName, setCompanyName] = useState("Grand Banquet Hall");
   const [currency, setCurrency] = useState("INR");
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (window.confirm("⚠️ DANGER: This will delete all Events, Quotes, Leads, and Tasks.\n\nMaster data (Menus, Inventory, Users) will remain safe.\n\nAre you sure you want to reset the system for a fresh start?")) {
-      localStorage.removeItem("events");
-      localStorage.removeItem("quotations");
-      localStorage.removeItem("leads");
-      localStorage.removeItem("tasks");
-      // We keep: users, inventory, vendors, dishes, packages, taskTemplates
+      const token = await user.getIdToken();
+      await fetch('http://localhost:5000/api/settings/reset', {
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+      });
       alert("System has been reset. All transaction data cleared.");
       window.location.reload();
     }
@@ -25,7 +23,7 @@ export default function Settings() {
   };
                     
   return (
-    <AdminLayout>
+    <>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800">System Settings</h1>
         <p className="text-gray-500 text-sm">Configure general application preferences.</p>
@@ -66,6 +64,6 @@ export default function Settings() {
           </button>
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 }

@@ -1,39 +1,37 @@
 import { useState, useEffect } from "react";
-import AdminLayout from "../layouts/AdminLayout";
+import { useAuth } from "../components/AuthContext";
 
-export default function Reports() {
+export default function Reports({ title }) {
+  const { user } = useAuth();
   const [revenueData, setRevenueData] = useState({ total: 0, paid: 0, pending: 0 });
   const [leadData, setLeadData] = useState({ total: 0, converted: 0, lost: 0, conversionRate: 0 });
   const [topEvents, setTopEvents] = useState([]);
 
   useEffect(() => {
-    // 1. Process Revenue Data from Invoices
-    const invoices = JSON.parse(localStorage.getItem("invoices")) || [];
-    const totalRevenue = invoices.reduce((sum, inv) => sum + inv.amount, 0);
-    const paidRevenue = invoices
-      .filter(inv => inv.status === 'Paid')
-      .reduce((sum, inv) => sum + inv.amount, 0);
-    const pendingRevenue = totalRevenue - paidRevenue;
-    setRevenueData({ total: totalRevenue, paid: paidRevenue, pending: pendingRevenue });
-
-    // Set top events by revenue
-    const sortedInvoices = [...invoices].sort((a, b) => b.amount - a.amount).slice(0, 5);
-    setTopEvents(sortedInvoices);
-
-    // 2. Process Lead Data
-    const leads = JSON.parse(localStorage.getItem("leads")) || [];
-    const totalLeads = leads.length;
-    const convertedLeads = leads.filter(l => l.status === 'Converted').length;
-    const lostLeads = leads.filter(l => l.status === 'Lost').length;
-    const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
-    setLeadData({ total: totalLeads, converted: convertedLeads, lost: lostLeads, conversionRate });
-
-  }, []);
+    const fetchReports = async () => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch('http://localhost:5000/api/reports/stats', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setRevenueData(data.revenue);
+          setLeadData(data.leads);
+          setTopEvents(data.topEvents);
+        }
+      } catch (error) { console.error(error); }
+    };
+    fetchReports();
+  }, [user]);
 
   return (
-    <AdminLayout>
+    <>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Reports & Analytics</h1>
+        <h1 className="text-2xl font-bold text-gray-800">
+          {title === "Dashboard" ? `Welcome, ${user?.name?.split(' ')[0] || 'User'} 👋` : (title || "Reports & Analytics")}
+        </h1>
         <p className="text-gray-500 text-sm">Key performance indicators for your banquet business.</p>
       </div>
 
@@ -115,6 +113,6 @@ export default function Reports() {
           </table>
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 }

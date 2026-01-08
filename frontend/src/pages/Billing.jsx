@@ -3,19 +3,18 @@ import { useAuth } from "../components/AuthContext";
 import { API_URL } from "../config";
 
 export default function Billing() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [events, setEvents] = useState([]);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [currentPayment, setCurrentPayment] = useState({ eventId: "", amount: "", mode: "Cash" });
 
   useEffect(() => {
     fetchBillingData();
-  }, [user]);
+  }, [token]);
 
   const fetchBillingData = async () => {
-    if (!user) return;
+    if (!token) return;
     try {
-      const token = await user.getIdToken();
       const res = await fetch(`${API_URL}/api/billing`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -26,7 +25,6 @@ export default function Billing() {
   const handleRecordPayment = async (e) => {
     e.preventDefault();
     try {
-      const token = await user.getIdToken();
       await fetch(`${API_URL}/api/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

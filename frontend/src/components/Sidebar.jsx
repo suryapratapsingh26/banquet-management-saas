@@ -1,81 +1,79 @@
-import { Link } from "react-router-dom";
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 
 export default function Sidebar() {
   const { user } = useAuth();
-  const role = user?.role;
-  const isSetup = !user?.isSetupComplete;
+  const location = useLocation();
+
+  const role = user?.role?.toUpperCase() || "";
+  const isAdmin = ["OWNER", "ADMIN", "COMPANY_ADMIN"].includes(role);
+  const isSuperAdmin = role === "SUPER_ADMIN";
+  if (!isAdmin && !isSuperAdmin) return null;
+
+  const isActive = (path) => location.pathname === path;
+
+  const navItems = [
+    { header: "Overview", items: [{ name: "Dashboard", path: "/admin/dashboard", icon: "🏠" }] },
+    { header: "Sales & CRM", items: [ { name: "Leads", path: "/sales/leads", icon: "📊" }, { name: "Sales Pipeline", path: "/sales/pipeline", icon: "📉" }, { name: "Quotations", path: "/quotations", icon: "📝" }, { name: "Contracts", path: "/contracts", icon: "📜" } ] },
+    { header: "Events", items: [ { name: "Event List", path: "/events", icon: "📅" }, { name: "Calendar View", path: "/calendar", icon: "🗓️" }, { name: "Multi-Day Events", path: "/multi-day-events", icon: "🔁" } ] },
+    { header: "Venue & Scheduling", items: [ { name: "Banquet Halls", path: "/banquet-halls", icon: "🏛️" }, { name: "Time Slots", path: "/time-slots", icon: "⏱️" }, { name: "Seating Layouts", path: "/seating-layouts", icon: "🪑" }, { name: "Event Types", path: "/event-types", icon: "🏷️" } ] },
+    { header: "F&B & Kitchen", items: [ { name: "Menu Builder", path: "/menus", icon: "🍽️" }, { name: "Recipe Master", path: "/recipes", icon: "🍲" }, { name: "Production Planning", path: "/kitchen/dashboard", icon: "👨‍🍳" }, { name: "Wastage Tracking", path: "/wastage", icon: "🗑️" } ] },
+    { header: "Inventory & Vendors", items: [ { name: "Inventory Items", path: "/inventory", icon: "📦" }, { name: "Vendor Master", path: "/vendors", icon: "🤝" }, { name: "Vendor Performance", path: "/vendor-performance", icon: "⭐" } ] },
+    { header: "Operations", items: [ { name: "Tasks", path: "/operations/tasks", icon: "🛠️" }, { name: "Checklists", path: "/checklists", icon: "✅" }, { name: "Task Templates", path: "/task-templates", icon: "📋" }, { name: "Escalations", path: "/escalations", icon: "⚠️" } ] },
+    { header: "Audits", items: [ { name: "Pre-Event Audits", path: "/audits/pre", icon: "🔍" }, { name: "Post-Event Audits", path: "/audits/post", icon: "🔎" }, { name: "Damage & Wastage", path: "/audits/damage", icon: "🏚️" } ] },
+    { header: "Finance & Accounts", items: [ { name: "Invoices", path: "/billing", icon: "💳" }, { name: "Payments", path: "/payments", icon: "💵" }, { name: "GST & Taxes", path: "/taxes", icon: "🧾" }, { name: "Settlements", path: "/settlements", icon: "🤝" }, { name: "Profit & Loss", path: "/pnl", icon: "📉" } ] },
+    { header: "Reports & Analytics", items: [ { name: "Sales Reports", path: "/reports/sales", icon: "📈" }, { name: "Operations Reports", path: "/reports/ops", icon: "📊" }, { name: "F&B Reports", path: "/reports/fnb", icon: "🍽️" }, { name: "Finance Reports", path: "/reports/finance", icon: "💰" }, { name: "Executive KPIs", path: "/reports/executive", icon: "👔" } ] },
+    { header: "System Setup", items: [ { name: "Property Setup", path: "/settings", icon: "⚙️" }, { name: "Users & Staff", path: "/users", icon: "👥" }, { name: "Roles & Permissions", path: "/roles", icon: "🔐" }, { name: "Masters", path: "/masters", icon: "🗂️" }, { name: "Integrations", path: "/integrations", icon: "🔌" }, { name: "Subscription", path: "/subscription", icon: "💳" } ] }
+  ];
+
+  // Super admin has a different platform nav
+  const superNav = [
+    { header: 'Platform', items: [ { name: 'Platform Dashboard', path: '/platform-dashboard', icon: '📊' }, { name: 'Tenants', path: '/tenants', icon: '🏢' }, { name: 'Create Tenant', path: '/tenants/create', icon: '➕' } ] },
+    { header: 'Subscriptions', items: [ { name: 'Plans', path: '/platform/plans', icon: '💳' }, { name: 'Usage', path: '/platform/usage', icon: '📈' } ] },
+    { header: 'Feature Flags', items: [ { name: 'Modules', path: '/platform/features', icon: '⚙️' } ] },
+    { header: 'Users (Internal)', items: [ { name: 'Asyncotel Staff', path: '/platform/users', icon: '👥' }, { name: 'Roles & Access', path: '/platform/roles', icon: '🔐' } ] },
+    { header: 'Audit & Logs', items: [ { name: 'Activity Logs', path: '/platform/logs', icon: '🧾' }, { name: 'API Logs', path: '/platform/apilogs', icon: '🔎' } ] }
+  ];
+
+  const renderNav = (sections) => (
+    <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
+      {sections.map((section, idx) => (
+        <div key={idx}>
+          <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2 pl-2">{section.header}</h3>
+          <ul className="space-y-1">
+            {section.items.map(item => (
+              <li key={item.path}>
+                <Link to={item.path} className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive(item.path) ? 'bg-pink-600 text-white' : 'text-gray-800 hover:bg-pink-50'}`}>
+                  <span>{item.icon}</span>
+                  {item.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
 
   return (
-    <aside className="w-64 bg-white shadow-md hidden md:flex flex-col">
-      <div className="h-16 flex items-center justify-center border-b">
-        <h1 className="text-2xl font-bold text-pink-600">Asyncotel</h1>
+    <aside className="w-64 h-screen flex-shrink-0 flex flex-col" style={{ backgroundColor: '#FCE4EC', color: '#333' }}>
+      <div className="p-6 border-b" style={{ backgroundColor: '#FCE4EC' }}>
+        <h2 className="text-2xl font-bold text-pink-600">Asyncotel</h2>
+        <p className="text-xs text-gray-700 tracking-widest">{isSuperAdmin ? 'PLATFORM' : 'BANQUET PMS'}</p>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-4">
-        <ul className="space-y-1 px-2">
-          {/* Common Link */}
-          <SidebarLink to={role === 'super_admin' ? "/super-admin-dashboard" : "/dashboard"} icon="📊" text="Dashboard" />
+      {isSuperAdmin ? renderNav(superNav) : renderNav(navItems)}
 
-          {/* Admin-only Links */}
-          {role === 'admin' && (
-            <>
-              <SidebarLink to="/leads" icon="🎯" text="Leads & CRM" />
-              <SidebarLink to="/sales" icon="📈" text="Sales Dashboard" locked={isSetup} />
-              <SidebarLink to="/coordination" icon="🤝" text="Team Coordination" locked={isSetup} />
-              <SidebarLink to="/events" icon="📅" text="Events" locked={isSetup} />
-              <SidebarLink to="/task-templates" icon="📋" text="Task Templates (SOP)" locked={isSetup} />
-              <SidebarLink to="/tasks" icon="✅" text="Task Manager" locked={isSetup} />
-              <SidebarLink to="/banquet-halls" icon="🏢" text="Banquet Halls" />
-              <SidebarLink to="/time-slots" icon="⏰" text="Time Slots" />
-              <SidebarLink to="/event-types" icon="🎉" text="Event Types" />
-              <SidebarLink to="/fnb" icon="🍽️" text="F&B Management" />
-              <SidebarLink to="/menu-items" icon="🥗" text="Menu Items" />
-              <SidebarLink to="/packages" icon="🍱" text="Packages" />
-              <SidebarLink to="/services" icon="🎤" text="Add-On Services" />
-              <SidebarLink to="/taxes" icon="🧾" text="Tax Master" />
-              <SidebarLink to="/payment-modes" icon="💳" text="Payment Modes" />
-              <SidebarLink to="/inventory" icon="📦" text="Inventory & Store" />
-              <SidebarLink to="/vendors" icon="🤝" text="Vendors" />
-              <SidebarLink to="/departments" icon="🏷️" text="Departments" />
-              <SidebarLink to="/roles" icon="️" text="Roles & Permissions" />
-              <SidebarLink to="/users" icon="👥" text="Staff & Users" />
-              <SidebarLink to="#" icon="💰" text="Billing & Accounts" locked={isSetup} />
-              <SidebarLink to="#" icon="📈" text="Reports" locked={isSetup} />
-            </>
-          )}
-
-          {/* Super Admin Links */}
-          {role === 'super_admin' && (
-            <>
-              <SidebarLink to="#" icon="🏢" text="Tenant Management" />
-              <SidebarLink to="#" icon="💳" text="Subscriptions" />
-              <SidebarLink to="#" icon="📈" text="Global Reports" />
-            </>
-          )}
-
-          {/* Common Link */}
-          <SidebarLink to="/settings" icon="⚙️" text="Settings" />
-        </ul>
-      </nav>
-
-      <div className="p-4 border-t text-xs text-gray-400 text-center">© 2025 Asyncotel</div>
+      <div className="p-4 border-t">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-sm font-bold text-pink-600">{user?.name?.charAt(0)}</div>
+          <div className="overflow-hidden">
+            <p className="text-sm font-medium truncate w-32" style={{ color: '#333' }}>{user?.name}</p>
+            <p className="text-xs text-gray-600 truncate">{user?.role}</p>
+          </div>
+        </div>
+      </div>
     </aside>
   );
 }
-
-const SidebarLink = ({ to, icon, text, locked }) => (
-  <li>
-    {locked ? (
-      <div className="flex items-center px-4 py-3 text-gray-400 cursor-not-allowed" title="Complete setup to unlock">
-        <span className="opacity-50 mr-2">{icon}</span>
-        <span className="flex-1">{text}</span>
-        <span className="text-xs">🔒</span>
-      </div>
-    ) : (
-      <Link to={to} className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg">
-        <span className="mr-2">{icon}</span> {text}
-      </Link>
-    )}
-  </li>
-);

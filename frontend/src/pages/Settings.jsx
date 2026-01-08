@@ -1,15 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../components/AuthContext";
 import { API_URL } from "../config";
 
 export default function Settings() {
   const { user } = useAuth();
+  const { token } = useAuth();
   const [companyName, setCompanyName] = useState("Grand Banquet Hall");
   const [currency, setCurrency] = useState("INR");
 
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!user || !token) return;
+      const res = await fetch(`${API_URL}/api/settings`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.name) setCompanyName(data.name);
+      if (data.currency) setCurrency(data.currency);
+    };
+    fetchSettings();
+  }, [user, token]);
+
   const handleReset = async () => {
     if (window.confirm("⚠️ DANGER: This will delete all Events, Quotes, Leads, and Tasks.\n\nMaster data (Menus, Inventory, Users) will remain safe.\n\nAre you sure you want to reset the system for a fresh start?")) {
-      const token = await user.getIdToken();
       await fetch(`${API_URL}/api/settings/reset`, {
         method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -18,9 +31,14 @@ export default function Settings() {
     }
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    alert("Settings saved successfully!");
+    await fetch(`${API_URL}/api/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ name: companyName, currency })
+    });
+    alert("Settings saved to database!");
   };
                     
   return (

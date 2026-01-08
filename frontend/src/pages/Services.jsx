@@ -1,17 +1,28 @@
 import { useState, useEffect } from "react";
+import { API_URL } from "../config";
+import { useAuth } from "../components/AuthContext";
 
 export default function Services() {
   const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const { token } = useAuth();
 
   useEffect(() => {
-    const savedServices = JSON.parse(localStorage.getItem("services")) || [
-      { id: 1, name: "DJ & Sound System", cost: 15000, unit: "per event" },
-      { id: 2, name: "Projector & Screen", cost: 5000, unit: "per event" },
-      { id: 3, name: "Special Floral Decor", cost: 25000, unit: "per event" },
-      { id: 4, name: "Live Music Band", cost: 50000, unit: "per event" }
-    ];
-    setServices(savedServices);
-  }, []);
+    if (!token) return;
+    const fetchServices = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/api/services`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) setServices(await res.json());
+        else setServices([]);
+      } catch (e) {
+        console.error(e);
+        setServices([]);
+      } finally { setLoading(false); }
+    };
+    fetchServices();
+  }, [token]);
 
   return (
     <>
@@ -21,6 +32,9 @@ export default function Services() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {loading ? (
+          <div className="p-6 text-center text-gray-500">Loading services...</div>
+        ) : (
         <table className="w-full text-sm text-left text-gray-500">
           <thead className="text-xs text-gray-700 uppercase bg-gray-50">
             <tr>
@@ -34,8 +48,8 @@ export default function Services() {
             {services.map((service) => (
               <tr key={service.id} className="border-b hover:bg-gray-50">
                 <td className="px-6 py-4 font-medium text-gray-900">{service.name}</td>
-                <td className="px-6 py-4">₹{service.cost.toLocaleString()}</td>
-                <td className="px-6 py-4">{service.unit}</td>
+                <td className="px-6 py-4">₹{(service.basePrice || service.cost || 0).toLocaleString()}</td>
+                <td className="px-6 py-4">{service.unit || 'per event'}</td>
                 <td className="px-6 py-4 text-right">
                   <button className="text-blue-600 hover:underline">Edit</button>
                 </td>
@@ -48,6 +62,7 @@ export default function Services() {
             )}
           </tbody>
         </table>
+        )}
       </div>
     </>
   );

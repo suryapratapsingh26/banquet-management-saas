@@ -31,7 +31,7 @@ export default function SalesDashboard() {
         <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
           <h3 className="font-bold text-gray-800 mb-4">Quick Actions</h3>
           <div className="space-y-3">
-            <button onClick={() => navigate("/leads")} className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded flex justify-between items-center cursor-pointer">
+            <button onClick={() => navigate("/sales/leads")} className="w-full text-left p-3 bg-gray-50 hover:bg-gray-100 rounded flex justify-between items-center cursor-pointer">
               <span>📝 Create New Lead</span>
               <span className="text-gray-400">→</span>
             </button>

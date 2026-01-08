@@ -4,16 +4,16 @@ import { API_URL } from "../config";
 
 export default function Users() {
   const { user } = useAuth();
+  const { token } = useAuth();
   const [users, setUsers] = useState([]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [user]);
+    if (token) fetchUsers();
+  }, [user, token]);
 
   const fetchUsers = async () => {
     if (!user) return;
     try {
-      const token = await user.getIdToken();
       const res = await fetch(`${API_URL}/api/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -41,7 +41,6 @@ export default function Users() {
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
-      const token = await user.getIdToken();
       await fetch(`${API_URL}/api/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -57,7 +56,6 @@ export default function Users() {
   const handleRemoveUser = async (id) => {
     if (window.confirm("Are you sure you want to remove this user?")) {
       try {
-        const token = await user.getIdToken();
         await fetch(`${API_URL}/api/users/${id}`, {
           method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
         });

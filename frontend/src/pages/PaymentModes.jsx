@@ -1,18 +1,28 @@
 import { useState, useEffect } from "react";
+import { API_URL } from "../config";
+import { useAuth } from "../components/AuthContext";
 
 export default function PaymentModes() {
   const [modes, setModes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const { token } = useAuth();
 
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("paymentModes")) || [
-        { id: 1, name: "Cash", enabled: true },
-        { id: 2, name: "Bank Transfer (NEFT/RTGS)", enabled: true },
-        { id: 3, name: "UPI", enabled: true },
-        { id: 4, name: "Credit/Debit Card", enabled: false },
-        { id: 5, name: "Cheque", enabled: true },
-    ];
-    setModes(saved);
-  }, []);
+    if (!token) return;
+    const fetchModes = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/api/masters/payment-modes`, { headers: { Authorization: `Bearer ${token}` } });
+        if (res.ok) setModes(await res.json());
+        else setModes([]);
+      } catch (e) {
+        console.error(e);
+        setModes([]);
+      } finally { setLoading(false); }
+    };
+    fetchModes();
+  }, [token]);
 
   return (
     <>
@@ -21,6 +31,9 @@ export default function PaymentModes() {
         <p className="text-gray-500 text-sm">Configure accepted payment methods.</p>
       </div>
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {loading ? (
+          <div className="p-6 text-center text-gray-500">Loading payment modes...</div>
+        ) : (
         <table className="w-full text-sm text-left text-gray-500">
           <thead className="text-xs text-gray-700 uppercase bg-gray-50">
             <tr>
@@ -45,6 +58,7 @@ export default function PaymentModes() {
             ))}
           </tbody>
         </table>
+        )}
       </div>
     </>
   );

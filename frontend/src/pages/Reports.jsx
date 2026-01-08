@@ -4,15 +4,15 @@ import { API_URL } from "../config";
 
 export default function Reports({ title }) {
   const { user } = useAuth();
+  const { token } = useAuth();
   const [revenueData, setRevenueData] = useState({ total: 0, paid: 0, pending: 0 });
   const [leadData, setLeadData] = useState({ total: 0, converted: 0, lost: 0, conversionRate: 0 });
   const [topEvents, setTopEvents] = useState([]);
 
   useEffect(() => {
     const fetchReports = async () => {
-      if (!user) return;
+      if (!user || !token) return;
       try {
-        const token = await user.getIdToken();
         const res = await fetch(`${API_URL}/api/reports/stats`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -25,7 +25,7 @@ export default function Reports({ title }) {
       } catch (error) { console.error(error); }
     };
     fetchReports();
-  }, [user]);
+  }, [user, token]);
 
   return (
     <>

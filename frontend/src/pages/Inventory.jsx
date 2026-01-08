@@ -4,6 +4,7 @@ import { API_URL } from "../config";
 
 export default function Inventory() {
   const { user } = useAuth();
+  const { token } = useAuth();
   const canEdit = ['Inventory Manager', 'Kitchen Head', 'admin', 'Owner'].includes(user?.role);
   const [activeTab, setActiveTab] = useState("stock");
 
@@ -14,11 +15,9 @@ export default function Inventory() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user) return;
+      if (!user || !token) return;
       try {
-        const token = await user.getIdToken();
         const headers = { 'Authorization': `Bearer ${token}` };
-        
         const [invRes, vendRes] = await Promise.all([
           fetch(`${API_URL}/api/inventory`, { headers }),
           fetch(`${API_URL}/api/vendors`, { headers })
@@ -39,7 +38,7 @@ export default function Inventory() {
       }
     };
     fetchData();
-  }, [user]);
+  }, [user, token]);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -59,7 +58,6 @@ export default function Inventory() {
     const newItem = { ...currentItem, quantity: qty, reorderLevel: reorder, unitPrice: price, status };
 
     try {
-      const token = await user.getIdToken();
       const headers = { 
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}` 

@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_URL } from "../config";
+import { useAuth } from "../components/AuthContext";
 
 export default function VendorDashboard() {
   const navigate = useNavigate();
   const [myRating, setMyRating] = useState(0);
+  const { token } = useAuth();
 
   useEffect(() => {
-    // Mocking logged in vendor as ID 101 for demo purposes
-    const vendors = JSON.parse(localStorage.getItem("vendors")) || [];
-    const me = vendors.find(v => v.id === 101);
-    if (me) setMyRating(me.rating);
-  }, []);
+    if (!token) return;
+    const fetchMyRating = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/vendors`, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return;
+        const vendors = await res.json();
+        const me = vendors.find((v) => v.id === 101);
+        if (me) setMyRating(me.rating);
+      } catch (e) {
+        console.error('Failed to fetch vendors', e);
+      }
+    };
+    fetchMyRating();
+  }, [token]);
 
   return (
     <>

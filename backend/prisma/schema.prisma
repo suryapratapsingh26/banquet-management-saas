@@ -21,6 +21,7 @@ model Company {
   address       String?
   city          String?
   state         String?
+  currency      String   @default("INR")
   subscription  SubscriptionPlan @default(STARTER)
   
   createdAt     DateTime @default(now())
@@ -32,19 +33,48 @@ model Company {
   vendors       Vendor[]
   services      Service[]
   halls         BanquetHall[]
+  tasks         Task[]
+  audits        Audit[]
+  escalationRules EscalationRule[]
+  escalationLogs EscalationLog[]
+  notifications Notification[]
+  inventory     InventoryItem[]
+  timeSlots     TimeSlot[]
+  menuTemplates MenuTemplate[]
+  menuItems     MenuItem[]
+  taxes         Tax[]
+  packages      Package[]
+  departments   Department[]
+  taskTemplates TaskTemplate[]
+  eventTransfers EventTransfer[]
+  checklists    Checklist[]
 }
 
 model User {
   id        String   @id @default(uuid())
-  companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
   name      String
-  email     String   @unique
-  password  String
-  role      Role     @default(SALES)
-  mobile    String?
+  email     String?  @unique // Optional for Staff
+  password  String?  // Optional for OTP users
+  role      String   @default("SALES")
+  mobile    String?  @unique // Mandatory for Staff login
+  otp       String?
+  otpExpiry DateTime?
+  refreshTokens RefreshToken[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Refresh tokens stored for secure rotation
+model RefreshToken {
+  id         String   @id @default(uuid())
+  token      String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  expiresAt  DateTime
+  revoked    Boolean  @default(false)
+  createdAt  DateTime @default(now())
 }
 
 model Client {
@@ -85,8 +115,11 @@ model Vendor {
   rating      Float    @default(0)
   mobile      String?
   email       String?
+  otp         String?
+  otpExpiry   DateTime?
   
   assignments EventVendor[]
+  tasks       VendorTask[]
 }
 
 // Module 5: Services & Pricing
@@ -99,12 +132,104 @@ model Service {
   basePrice   Float
 }
 
+// Module 1.1: Time Slot Master
+model TimeSlot {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String   // e.g., "Morning", "Evening"
+  startTime String   // "09:00"
+  endTime   String   // "14:00"
+  bufferMin Int      @default(60) // Buffer time in minutes
+  isActive  Boolean  @default(true)
+  events    Event[]
+}
+
+// Module 1.2: Menu Masters
+model MenuTemplate {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String   // e.g., "Gold Wedding Menu"
+  eventType EventType @default(WEDDING)
+  items     Json     // Storing structure: { "Starters": ["Item1", "Item2"], "Mains": [...] }
+  pricePerPax Float
+}
+
+model MenuItem {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String
+  category  String   // Starters, Mains, Desserts
+  type      String   // Veg, Non-Veg
+  costPrice Float    @default(0)
+  isActive  Boolean  @default(true)
+}
+
+// Module 1.2: Tax Master
+model Tax {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String   // GST
+  percentage Float   // 18.0
+  type      String   // CGST, SGST, IGST
+  isActive  Boolean  @default(true)
+}
+
+// Module 1.2: Packages Master
+model Package {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  name        String   // e.g. "Gold Wedding Package"
+  type        EventType
+  pricePerPax Float
+  minPax      Int      @default(50)
+  maxPax      Int?
+  description String?
+  items       Json     // Array of included services/menu items
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Module 1.1: Department Master
+model Department {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String   // Sales, Kitchen, Ops
+  headUserId String? // Optional link to a User who is the head
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Module 6: Inventory
+model InventoryItem {
+  id           String   @id @default(uuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id])
+  item         String
+  category     String
+  quantity     Float
+  unit         String
+  reorderLevel Float
+  unitPrice    Float
+  status       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 // Module 1: Leads & CRM
 model Lead {
   id          String   @id @default(uuid())
   companyId   String
   company     Company  @relation(fields: [companyId], references: [id])
   
+  clientId    String?
+  client      Client?  @relation(fields: [clientId], references: [id])
   clientName  String
   eventType   EventType
   eventDate   DateTime?
@@ -123,6 +248,8 @@ model Event {
   
   title       String
   eventType   EventType
+  timeSlotId  String?    // Link to TimeSlot
+  timeSlot    TimeSlot?  @relation(fields: [timeSlotId], references: [id])
   startDate   DateTime
   endDate     DateTime
   guests      Int
@@ -134,9 +261,12 @@ model Event {
   hall        BanquetHall? @relation(fields: [hallId], references: [id])
 
   booking     Booking?
+  packageId   String?    // Link to selected package
   quotation   Quotation?
   payments    Payment[]   // ✅ FIX: opposite relation added
   vendors     EventVendor[]
+  transfers   EventTransfer[]
+  vendorTasks VendorTask[]
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -150,6 +280,34 @@ model EventVendor {
   vendor    Vendor @relation(fields: [vendorId], references: [id])
   cost      Float
   status    String // Assigned, Paid
+}
+
+model VendorTask {
+  id          String   @id @default(uuid())
+  vendorId    String
+  vendor      Vendor   @relation(fields: [vendorId], references: [id])
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id])
+  description String
+  status      String   @default("PENDING") // PENDING, COMPLETED
+  createdAt   DateTime @default(now())
+}
+
+// Module 2.3: Event Transfer (Rescheduling)
+model EventTransfer {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id])
+  
+  oldHallId   String
+  newHallId   String
+  oldDate     DateTime
+  newDate     DateTime
+  reason      String
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt   DateTime @default(now())
 }
 
 ////////////////////
@@ -237,6 +395,18 @@ model Audit {
   updatedAt    DateTime @updatedAt
 }
 
+model Checklist {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id])
+  eventId     String
+  name        String   // e.g. "Pre-Event Setup"
+  items       Json     // [{task: "Lights", status: "PENDING"}, ...]
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model EscalationRule {
   id            String   @id @default(uuid())
   companyId     String
@@ -277,29 +447,28 @@ model Notification {
   updatedAt     DateTime @updatedAt
 }
 
-model Template {
+// Module 3: Task Template Engine (SOPs)
+model TaskTemplate {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  name      String   // e.g. "Wedding SOP"
+  eventType EventType
+  items     TaskTemplateItem[]
+}
+
+model TaskTemplateItem {
   id          String   @id @default(uuid())
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id])
   templateId  String
-  eventType   String
-  taskPhase   String
-  tasks       Json
-  version     Int      @default(1)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  template    TaskTemplate @relation(fields: [templateId], references: [id])
+  title       String
+  department  String   // Sales, Ops, Kitchen
+  slaMinutes  Int      // Minutes relative to event start (e.g. -60 for 1 hour before)
 }
 
 ////////////////////
 /// ENUMS       ///
 ////////////////////
-
-enum Role {
-  COMPANY_ADMIN
-  SALES
-  OPS
-  ACCOUNTS
-}
 
 enum ClientType {
   INDIVIDUAL
